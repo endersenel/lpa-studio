@@ -1,0 +1,9 @@
+FROM rocker/shiny:latest
+
+RUN R -e "install.packages(c('shinydashboard', 'haven', 'readxl', 'tidyLPA', 'dplyr', 'ggplot2', 'nnet', 'DT', 'tidyr'), repos='https://cloud.r-project.org/')"
+
+COPY app.R /srv/shiny-server/app.R
+
+EXPOSE 3838
+
+CMD ["/usr/bin/shiny-server"]
