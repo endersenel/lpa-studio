@@ -34,6 +34,8 @@ input[type=number],input[type=text],select,input[type=file]{width:100%;border:1p
 .btn:hover{background:var(--accd)}.btn:disabled{background:#8aa5a1;cursor:wait}
 .btn.alt{background:#fff;color:var(--ink);border:1px solid var(--ink)}
 .btn.alt:hover{background:#e9eeed}
+.btn.alt:disabled{background:#eef1f0;color:#8a9a98;border-color:#b9c4c2;cursor:not-allowed}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
 .picker{max-height:190px;overflow:auto;border:1px solid var(--line);padding:4px 8px;background:#fff}
 .picker label{display:flex;gap:7px;align-items:center;padding:2px 0;font-size:13px;cursor:pointer}
 .picker input{width:auto}
@@ -46,8 +48,7 @@ td{padding:5px 9px;border-bottom:1px solid #e6ebea;white-space:nowrap;font-varia
 td.n,th.n{text-align:right}
 tr.best td{background:#e1f1ee;font-weight:600}
 pre{background:#fff;border:1px solid var(--line);padding:12px;font:12px/1.55 'IBM Plex Mono',monospace;overflow:auto;white-space:pre-wrap;margin:6px 0}
-.chart{background:#fff;border:1px solid var(--line);padding:12px 10px 20px;overflow:hidden}
-.chart svg{display:block;width:100%;height:auto;max-height:480px;overflow:visible}
+.chart{background:#fff;border:1px solid var(--line);padding:8px}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;padding:4px 8px}
 .legend i{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-2px}
 .prog{font:12px 'IBM Plex Mono',monospace;color:var(--acc);margin-top:8px;min-height:18px}
@@ -59,7 +60,7 @@ footer{padding:20px;text-align:center;font-size:12px;color:var(--mute)}
 </style>
 </head>
 <body>
-<header><h1>SPPLab - LPA Studio</h1><span>Sport and Performance Psychology Lab</span></header>
+<header><h1>SPPLab - LPA Studio</h1><span>Sport and Performance Psychology Lab · v2.0</span></header>
 <nav id="nav">
 <button class="on" data-t="t1">1. Data Import</button>
 <button data-t="t2">2. LPA Analysis</button>
@@ -91,31 +92,54 @@ footer{padding:20px;text-align:center;font-size:12px;color:var(--mute)}
 <div class="picker" id="lpaVars"><span class="note">Load data first.</span></div>
 <label class="f">Maximum number of profiles (K)</label>
 <input type="number" id="maxK" value="4" min="2" max="8">
+<label class="f">Covariance structure (mclust name)</label>
+<select id="model">
+<option value="EEI" selected>EEI · Model 1: equal variances, covariances = 0</option>
+<option value="VVI">VVI · Model 2: varying variances, covariances = 0</option>
+<option value="EEE">EEE · Model 3: equal variances and covariances</option>
+<option value="VVV">VVV · Model 6: varying variances and covariances</option>
+</select>
+<div class="chk"><input type="checkbox" id="cmpAll"><label for="cmpAll">Also fit all 4 structures (BIC comparison; slower)</label></div>
 <div class="chk"><input type="checkbox" id="scaleVars" checked><label for="scaleVars">Standardize indicators before estimation (Z-score)</label></div>
+<label class="f">Random starts per solution (K ≥ 2)</label>
+<input type="number" id="nstart" value="100" min="5" max="1000" step="10">
 <div class="chk"><input type="checkbox" id="runBlrt" checked><label for="runBlrt">Compute BLRT (bootstrap; slower)</label></div>
 <label class="f">BLRT bootstrap samples</label>
-<input type="number" id="nboot" value="50" min="19" max="500" step="10">
+<input type="number" id="nboot" value="100" min="19" max="1000" step="10">
+<label class="f">BLRT starts per bootstrap sample (K model)</label>
+<input type="number" id="bstart" value="20" min="3" max="200" step="1">
 <label class="f">Random seed</label>
 <input type="number" id="seed" value="123" min="1">
+<div class="btnrow">
 <button class="btn" id="runLpa">Run LPA Analysis</button>
+<button class="btn alt" id="cancelBtn" disabled>Cancel</button>
+</div>
 <div class="prog" id="lpaProg"></div>
 <label class="f" style="margin-top:14px">Profile solution used in plots, tables and Tabs 3-4</label>
 <select id="selK"></select>
-<p class="note">Specification: Model 1 (equal variances, covariances fixed to 0; mclust "EEI"), estimated by the EM algorithm with 10 k-means starts.</p>
+<p class="note">Estimation runs in background workers (page stays responsive) with seeded random starts, so the same data + seed + settings give the same result. EEI was cross-checked against R in this project. EEE, VVI and VVV are newly added: cross-check them in R (mclust) before relying on them.</p>
+<button class="btn alt" id="selfTest">Run built-in self-test</button>
 </div>
 <div>
 <div class="panel"><h2>Profile plot (means ± SE)</h2><div class="chart" id="lpaPlot"></div><div class="legend" id="lpaLegend"></div></div>
 <div class="panel"><h2>Model fit indices & comparative statistics</h2>
 <div class="tw" id="fitTable"></div>
-<p class="note">Lower AIC/BIC/SABIC indicate better fit (best BIC among K ≥ 2 is highlighted). BLRT p tests K profiles against K-1 (p < .05 favors K). Entropy and AvePP > .80 indicate good classification. Very small classes are flagged. The LMR-LRT is <b>not</b> computed in this browser version; use BLRT, or the R version if you need LMR.</p>
+<p class="note">Lower AIC/BIC/SABIC indicate better fit (best BIC among K ≥ 2 is highlighted). BLRT p and LMR p both test K profiles against K-1 (p < .05 favors K). LMR p uses the adjusted Lo-Mendell-Rubin formula as implemented in tidyLPA's <code>calc_lrt</code>; it is not guaranteed to equal Mplus's VLMR. "Best-LL starts" = how many random starts reached the best LogLik (within 0.001): a value of 1 means the optimum was found only once, so increase the number of starts. Entropy and AvePP > .80 indicate good classification.</p>
 <div class="chart" id="icPlot"></div><div class="legend" id="icLegend"></div>
 <button class="btn alt" id="dlFit">Download fit table (CSV)</button></div>
+<div class="panel" id="cmpPanel" style="display:none"><h2>BIC across covariance structures</h2><div class="tw" id="cmpTable"></div>
+<p class="note">Lower BIC is better. A "—" means no solution converged for that cell. Comparing EEI with EEE/VVV shows how strongly the zero-covariance (local independence) assumption is rejected.</p></div>
 <div class="two">
 <div class="panel"><h2>Class counts & proportions</h2><div class="tw" id="countTable"></div></div>
 <div class="panel"><h2>Average latent class probabilities</h2><div class="tw" id="probTable"></div><p class="note">Rows: most likely assigned profile; columns: mean posterior probability. Diagonal > 0.80 indicates strong separation.</p></div>
 </div>
 <div class="panel"><h2>Profile means (raw scale) and SDs</h2><div class="tw" id="rawMeans"></div>
 <button class="btn alt" id="dlData">Download data with profile membership (CSV)</button></div>
+<div class="panel"><h2>Within-profile correlations (local independence check)</h2><pre id="locDep">Run the LPA first.</pre>
+<p class="note">Posterior-weighted correlations among indicators inside each profile of the selected solution. Models with covariances fixed to 0 (EEI, VVI) assume these are about zero. Large values suggest the assumption is too restrictive; compare BIC with EEE/VVV.</p></div>
+<div class="panel"><h2>Analysis log (for reproducibility)</h2><pre id="logOut">Run the LPA first.</pre>
+<button class="btn alt" id="dlLog">Download analysis log (TXT)</button></div>
+<div class="panel"><h2>Self-test output</h2><pre id="selfOut">Not run.</pre></div>
 <div class="panel"><h2>Suggested methodological citation</h2><pre id="cite"></pre></div>
 </div>
 </div>
@@ -144,7 +168,7 @@ footer{padding:20px;text-align:center;font-size:12px;color:var(--mute)}
 <label class="f">Reference profile</label><select id="regRef"></select>
 <div class="chk"><input type="checkbox" id="regScale" checked><label for="regScale">Standardize numeric predictors</label></div>
 <button class="btn" id="runReg">Run Multinomial Regression</button>
-<p class="note">Uses most-likely class membership; classification error is ignored. For publication consider BCH / R3STEP approaches.</p>
+<p class="note">Uses most-likely class membership; classification error is ignored. For publication consider BCH / R3STEP approaches (not available in this tool).</p>
 </div>
 <div>
 <div class="panel"><h2>Model summary</h2><pre id="regOut">No model yet.</pre></div>
@@ -160,10 +184,11 @@ footer{padding:20px;text-align:center;font-size:12px;color:var(--mute)}
 <label class="f">Time 1 indicators (at least 2)</label><div class="picker" id="t1Vars"><span class="note">Load data first.</span></div>
 <label class="f">Time 2 indicators (at least 2)</label><div class="picker" id="t2Vars"><span class="note">Load data first.</span></div>
 <label class="f">Profiles per time point (K)</label><input type="number" id="lptaK" value="3" min="2" max="6">
+<label class="f">Random starts per time point</label><input type="number" id="lptaStarts" value="100" min="5" max="1000" step="10">
 <div class="chk"><input type="checkbox" id="lptaScale" checked><label for="lptaScale">Standardize within each time point</label></div>
 <button class="btn" id="runLpta">Run LPTA Transition Analysis</button>
 <div class="prog" id="lptaProg"></div>
-<p class="note">Profiles are estimated separately at each time point and ordered by size (largest = Profile 1). Labels at T1 and T2 do not necessarily represent the same substantive profile: inspect the plots.</p>
+<p class="note">Uses the covariance structure and seed selected in Tab 2. Profiles are estimated separately at each time point and ordered by size (largest = Profile 1). Labels at T1 and T2 do not necessarily represent the same substantive profile: inspect the plots.</p>
 </div>
 <div>
 <div class="panel"><h2>Profile transition matrix (Time 1 → Time 2)</h2><div class="tw" id="transTable"></div></div>
@@ -176,19 +201,153 @@ footer{padding:20px;text-align:center;font-size:12px;color:var(--mute)}
 </div>
 </section>
 </main>
-<footer>SPPLab LPA Studio · client-side JavaScript · all computations run in your browser</footer>
+<footer>SPPLab LPA Studio v2.0 · client-side JavaScript · all computations run in your browser</footer>
 <div id="toast"></div>
+
+<!-- ENGINE: shared by the main page and the Web Workers (plain JS, no DOM access) -->
+<script type="text/plain" id="engine">
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function mixSeed(){let h=2166136261;for(let i=0;i<arguments.length;i++){h^=(arguments[i]>>>0);h=Math.imul(h,16777619)}return h>>>0}
+function randn(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r())}
+function mean(a){let s=0;for(let i=0;i<a.length;i++)s+=a[i];return s/a.length}
+function sd(a){if(a.length<2)return 0;const m=mean(a);let s=0;for(let i=0;i<a.length;i++)s+=(a[i]-m)*(a[i]-m);return Math.sqrt(s/(a.length-1))}
+
+function kmeansLabels(X,K,r){const n=X.length,p=X[0].length;
+ let C=[X[Math.floor(r()*n)].slice()];
+ while(C.length<K){const d=X.map(x=>Math.min(...C.map(c=>x.reduce((s,v,j)=>s+(v-c[j])**2,0))));const tot=d.reduce((a,b)=>a+b,0);
+  let u=r()*tot,i=0;for(;i<n-1;i++){u-=d[i];if(u<=0)break}C.push(X[i].slice())}
+ let lab=new Array(n).fill(0);
+ for(let it=0;it<15;it++){let ch=false;
+  for(let i=0;i<n;i++){let b=0,bd=Infinity;for(let k=0;k<K;k++){let s=0;for(let j=0;j<p;j++)s+=(X[i][j]-C[k][j])**2;if(s<bd){bd=s;b=k}}if(lab[i]!==b){lab[i]=b;ch=true}}
+  C=C.map((c,k)=>{const m=new Array(p).fill(0);let cnt=0;for(let i=0;i<n;i++)if(lab[i]===k){cnt++;for(let j=0;j<p;j++)m[j]+=X[i][j]}return cnt?m.map(v=>v/cnt):c});
+  if(!ch)break}
+ return lab}
+
+/* Cholesky helpers (A symmetric p x p) */
+function chol(A,p){const L=Array.from({length:p},()=>new Array(p).fill(0));
+ for(let i=0;i<p;i++){for(let j=0;j<=i;j++){let s=A[i][j];for(let k=0;k<j;k++)s-=L[i][k]*L[j][k];
+  if(i===j){if(!(s>1e-10*Math.abs(A[i][i])+1e-300))return null;L[i][i]=Math.sqrt(s)}else L[i][j]=s/L[j][j]}}
+ return L}
+function logdetL(L,p){let s=0;for(let i=0;i<p;i++)s+=2*Math.log(L[i][i]);return s}
+function quadL(L,d,p,y){let q=0;for(let i=0;i<p;i++){let s=d[i];for(let k=0;k<i;k++)s-=L[i][k]*y[k];y[i]=s/L[i][i];q+=y[i]*y[i]}return q}
+
+/* E-step: fills z, returns log-likelihood. Ls/lds have length 1 when covariances are equal (eq=true) */
+function estep(X,K,pi,mu,Ls,lds,eq,z){const n=X.length,p=X[0].length;
+ const d=new Array(p),y=new Array(p),lp=new Array(K);const c0=p*Math.log(2*Math.PI);let ll=0;
+ const lpi=pi.map(v=>Math.log(Math.max(v,1e-300)));
+ for(let i=0;i<n;i++){const x=X[i];let mx=-Infinity;
+  for(let k=0;k<K;k++){const L=eq?Ls[0]:Ls[k],ld=eq?lds[0]:lds[k],m=mu[k];
+   for(let j=0;j<p;j++)d[j]=x[j]-m[j];
+   const q=quadL(L,d,p,y);lp[k]=lpi[k]-0.5*(c0+ld+q);if(lp[k]>mx)mx=lp[k]}
+  let sm=0;for(let k=0;k<K;k++)sm+=Math.exp(lp[k]-mx);const lse=mx+Math.log(sm);ll+=lse;
+  for(let k=0;k<K;k++)z[i][k]=Math.exp(lp[k]-lse)}
+ return ll}
+
+function nparams(model,K,p){const pm=(K-1)+K*p;
+ switch(model){case 'EEI':return pm+p;case 'VVI':return pm+K*p;case 'EEE':return pm+p*(p+1)/2;case 'VVV':return pm+K*p*(p+1)/2}
+ return NaN}
+
+/* EM for Gaussian mixtures: EEI, VVI, EEE, VVV (mclust parameterizations) */
+function emRun(X,K,z,model,maxit,tol){
+ const n=X.length,p=X[0].length;
+ const full=(model==='EEE'||model==='VVV'),eq=(model==='EEE'||model==='EEI');
+ const vtot=[];for(let j=0;j<p;j++){let m=0;for(let i=0;i<n;i++)m+=X[i][j];m/=n;let s=0;for(let i=0;i<n;i++)s+=(X[i][j]-m)**2;vtot.push(s/n)}
+ const floor=vtot.map(v=>1e-6*v+1e-12);
+ const pi=new Array(K),mu=Array.from({length:K},()=>new Array(p).fill(0));
+ const minN=(full&&!eq)?p+1:2;let Ls=null,lds=null,ll=-Infinity,old=-Infinity,conv=false;const d=new Array(p);
+ for(let it=0;it<maxit;it++){
+  const nk=new Array(K).fill(0);for(let i=0;i<n;i++)for(let k=0;k<K;k++)nk[k]+=z[i][k];
+  if(nk.some(v=>!(v>=minN)))return null;
+  for(let k=0;k<K;k++){pi[k]=nk[k]/n;for(let j=0;j<p;j++){let s=0;for(let i=0;i<n;i++)s+=z[i][k]*X[i][j];mu[k][j]=s/nk[k]}}
+  const W=Array.from({length:K},()=>Array.from({length:p},()=>new Array(p).fill(0)));
+  for(let i=0;i<n;i++)for(let k=0;k<K;k++){const w=z[i][k];if(w<1e-12)continue;
+   for(let j=0;j<p;j++)d[j]=X[i][j]-mu[k][j];
+   if(full){for(let a=0;a<p;a++){const wa=w*d[a];for(let b=0;b<=a;b++)W[k][a][b]+=wa*d[b]}}
+   else{for(let a=0;a<p;a++)W[k][a][a]+=w*d[a]*d[a]}}
+  let S=[];
+  if(eq){const T=Array.from({length:p},()=>new Array(p).fill(0));
+   for(let k=0;k<K;k++)for(let a=0;a<p;a++)for(let b=0;b<=a;b++)T[a][b]+=W[k][a][b];
+   for(let a=0;a<p;a++)for(let b=0;b<=a;b++)T[a][b]/=n;S=[T]}
+  else{for(let k=0;k<K;k++){const T=W[k];for(let a=0;a<p;a++)for(let b=0;b<=a;b++)T[a][b]/=nk[k];S.push(T)}}
+  S.forEach(T=>{for(let a=0;a<p;a++){if(T[a][a]<floor[a])T[a][a]=floor[a];for(let b=0;b<a;b++)T[b][a]=T[a][b]}});
+  Ls=S.map(T=>chol(T,p));if(Ls.some(l=>!l))return null;
+  lds=Ls.map(l=>logdetL(l,p));
+  ll=estep(X,K,pi,mu,Ls,lds,eq,z);
+  if(!isFinite(ll))return null;
+  if(it>3&&Math.abs(ll-old)<tol*(Math.abs(ll)+1e-10)){conv=true;break}old=ll}
+ return{K,model,eq,ll,pi:pi.slice(),mu:mu.map(m=>m.slice()),Ls,lds,z,df:nparams(model,K,p),conv}}
+
+function labelsToZ(lab,K){return lab.map(l=>{const a=new Array(K).fill(K===1?0:1e-4);a[l]=1;const t=a.reduce((x,y)=>x+y,0);return a.map(v=>v/t)})}
+function zFromModel(m,X){const z=X.map(()=>new Array(m.K).fill(0));estep(X,m.K,m.pi,m.mu,m.Ls,m.lds,m.eq,z);return z}
+
+/* Best of many starts; records how often the best LogLik was reached */
+function fitBest(X,K,model,seed,nstart,extraZ){const n=X.length;const r=rng(seed);let best=null;const lls=[];let fail=0;
+ const total=(K===1?1:nstart)+(extraZ?1:0);
+ for(let s=0;s<total;s++){let z;
+  if(extraZ&&s===0)z=extraZ;
+  else{const t=extraZ?s-1:s;
+   const lab=K===1?new Array(n).fill(0):(t%2===0?kmeansLabels(X,K,r):Array.from({length:n},()=>Math.floor(r()*K)));
+   z=labelsToZ(lab,K)}
+  const m=emRun(X,K,z,model,1000,1e-8);
+  if(m){lls.push(m.ll);if(!best||m.ll>best.ll)best=m}else fail++;
+  if(K===1&&best)break}
+ if(best)best.starts={n:total,fail,hits:lls.filter(v=>Math.abs(v-best.ll)<1e-3).length};
+ return best}
+
+function simulate(m,n,r){const p=m.mu[0].length;const X=[];const eps=new Array(p);
+ for(let i=0;i<n;i++){let u=r(),k=0,c=m.pi[0];while(u>c&&k<m.K-1){k++;c+=m.pi[k]}
+  const L=m.eq?m.Ls[0]:m.Ls[k];for(let j=0;j<p;j++)eps[j]=randn(r);
+  const x=new Array(p);for(let j=0;j<p;j++){let s=m.mu[k][j];for(let c2=0;c2<=j;c2++)s+=L[j][c2]*eps[c2];x[j]=s}X.push(x)}
+ return X}
+
+function handleTask(t){try{
+ if(t.type==='fit'){const m=fitBest(t.X,t.K,t.model,t.seed,t.nstart,null);return{ok:!!m,m:m}}
+ if(t.type==='boot'){const r=rng(t.seed);const Xb=simulate(t.m0,t.n,r);
+  const f0=fitBest(Xb,t.k-1,t.model,mixSeed(t.seed,1),t.ns0,zFromModel(t.m0,Xb));
+  const f1=fitBest(Xb,t.k,t.model,mixSeed(t.seed,2),t.ns1,null);
+  if(f0&&f1)return{ok:true,stat:2*(f1.ll-f0.ll)};return{ok:false}}
+ return{ok:false,err:'unknown task'}}
+ catch(e){return{ok:false,err:String(e&&e.message||e)}}}
+</script>
 
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-const S={data:null,lpa:null,fin:null,lpta:null};
+const VERSION='2.0';
+const S={data:null,lpa:null,fin:null,lpta:null,pool:null};
 const PAL=['#0f766e','#b45309','#4338ca','#be123c','#4d7c0f','#0e7490','#7e22ce','#a16207'];
+const MODELS={EEI:'Model 1: equal variances, covariances fixed to 0',VVI:'Model 2: varying variances, covariances fixed to 0',EEE:'Model 3: equal variances and covariances',VVV:'Model 6: varying variances and covariances'};
+const MIDX={EEI:1,VVI:2,EEE:3,VVV:6};
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',4000)}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&','<':'<','>':'>','"':'"'}[c]));
 const fx=(x,d=3)=>(x===null||x===undefined||!isFinite(x))?'—':Number(x).toFixed(d);
-const fp=p=>(p===null||!isFinite(p))?'—':(p<0.001?'< .001':p.toFixed(3));
+const fp=p=>(p===null||p===undefined||!isFinite(p))?'—':(p<0.001?'< .001':p.toFixed(3));
 const tick=()=>new Promise(r=>setTimeout(r,0));
+
+/* ---------- load shared engine (rng, mean, sd, EM, fitBest, simulate, handleTask ...) ---------- */
+const ENGINE_SRC=$('engine').textContent;
+(0,eval)(ENGINE_SRC);
+
+/* ---------- worker pool (falls back to the main thread if Workers are unavailable) ---------- */
+function Pool(n){this.q=[];this.inflight={};this.idle=[];this.w=[];this.id=0;this.closed=false;this.fallback=false;this.localBusy=false;this.url=null;
+ if(n>0&&typeof Worker!=='undefined'){
+  try{this.url=URL.createObjectURL(new Blob([ENGINE_SRC+'\nself.onmessage=function(e){self.postMessage({id:e.data.id,out:handleTask(e.data)})};'],{type:'text/javascript'}));
+   for(let i=0;i<n;i++){const w=new Worker(this.url);w.onmessage=ev=>this.done(w,ev.data);w.onerror=ev=>{if(ev&&ev.preventDefault)ev.preventDefault();this.dead(w)};this.w.push(w);this.idle.push(w)}}
+  catch(e){this.killAll();this.fallback=true}}
+ else this.fallback=true}
+Pool.prototype.killAll=function(){this.w.forEach(w=>w.terminate());this.w=[];this.idle=[];if(this.url){URL.revokeObjectURL(this.url);this.url=null}};
+Pool.prototype.dead=function(w){w.terminate();this.w=this.w.filter(x=>x!==w);this.idle=this.idle.filter(x=>x!==w);
+ if(w.cur){const it=w.cur;w.cur=null;delete this.inflight[it.task.id];this.q.unshift(it)}
+ if(!this.w.length)this.fallback=true;this.pump()};
+Pool.prototype.run=function(task){return new Promise(res=>{if(this.closed){res({cancelled:true});return}this.q.push({task,res});this.pump()})};
+Pool.prototype.pump=function(){if(this.closed)return;
+ if(this.fallback){if(!this.localBusy){this.localBusy=true;this.localLoop()}return}
+ while(this.idle.length&&this.q.length){const w=this.idle.pop(),it=this.q.shift();const id=++this.id;it.task.id=id;w.cur=it;this.inflight[id]=it;w.postMessage(it.task)}};
+Pool.prototype.localLoop=async function(){while(this.q.length&&!this.closed){const it=this.q.shift();await tick();if(this.closed){it.res({cancelled:true});break}it.res(handleTask(it.task))}this.localBusy=false};
+Pool.prototype.done=function(w,msg){const it=this.inflight[msg.id];delete this.inflight[msg.id];w.cur=null;this.idle.push(w);if(it)it.res(msg.out);this.pump()};
+Pool.prototype.close=function(){if(this.closed)return;this.closed=true;this.q.splice(0).forEach(it=>it.res({cancelled:true}));Object.values(this.inflight).forEach(it=>it.res({cancelled:true}));this.inflight={};this.killAll()};
+const workerCount=()=>Math.max(1,Math.min(8,(navigator.hardwareConcurrency||4)-1));
+const strip=m=>({K:m.K,model:m.model,eq:m.eq,pi:m.pi,mu:m.mu,Ls:m.Ls,lds:m.lds});
 
 /* ---------- navigation ---------- */
 $('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
@@ -196,10 +355,6 @@ $('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.id===b.dataset.t));});
 
 /* ---------- math utilities ---------- */
-const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
-const sd=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))};
-function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function randn(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r())}
 function lgamma(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(let j=0;j<6;j++)s+=c[j]/++y;return -t+Math.log(2.5066282746310005*s/x)}
 function betacf(a,b,x){const FP=1e-300;const qab=a+b,qap=a+1,qam=a-1;let c=1,d=1-qab*x/qap;if(Math.abs(d)<FP)d=FP;d=1/d;let h=d;
  for(let m=1;m<=300;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;h*=d*c;
@@ -214,6 +369,11 @@ const pT2=(t,df)=>ibeta(df/(df+t*t),df/2,0.5);
 const pF=(f,d1,d2)=>f<=0?1:ibeta(d2/(d2+d1*f),d2/2,d1/2);
 const pChi=(x,df)=>gammq(df/2,x/2);
 const pZ2=z=>gammq(0.5,z*z/2);
+
+/* LMR-LRT, tidyLPA "ad hoc adjusted" formulation:
+   LMR = LR / (1 + ((3*G1-1)-(3*G0-1))*ln(n))^-1 ... as in tidyLPA::calc_lrt; df = difference in parameters */
+function calcLRT(n,ll0,np0,k0,ll1,np1,k1){const lr=2*(ll1-ll0);const mod=lr/(1+1/(((3*k1-1)-(3*k0-1))*Math.log(n)));const df=np1-np0;
+ return{lr,mod,df,p:df>0?pChi(mod,df):NaN}}
 
 /* matrix helpers */
 function solveInv(A){const n=A.length;const M=A.map((r,i)=>[...r,...Array.from({length:n},(_,j)=>i===j?1:0)]);
@@ -262,78 +422,39 @@ $('demoBtn').addEventListener('click',()=>{const r=rng(7),rows=[['ID','Speed','A
   const g=r()<(k===1?0.7:0.4)?'F':'M';rows.push([i+1,...v,g,Math.round(18+r()*10+(k===0?2:0)),['Elite','Amateur'][r()<0.35+0.2*(k===2)?0:1]])}
  setData(rows)});
 
-/* ---------- Gaussian mixture, EEI (equal variances, zero covariance) ---------- */
-function kmeansLabels(X,K,r){const n=X.length,p=X[0].length;
- let C=[X[Math.floor(r()*n)].slice()];
- while(C.length<K){const d=X.map(x=>Math.min(...C.map(c=>x.reduce((s,v,j)=>s+(v-c[j])**2,0))));const tot=d.reduce((a,b)=>a+b,0);
-  let u=r()*tot,i=0;for(;i<n-1;i++){u-=d[i];if(u<=0)break}C.push(X[i].slice())}
- let lab=new Array(n).fill(0);
- for(let it=0;it<15;it++){let ch=false;
-  for(let i=0;i<n;i++){let b=0,bd=Infinity;for(let k=0;k<K;k++){let s=0;for(let j=0;j<p;j++)s+=(X[i][j]-C[k][j])**2;if(s<bd){bd=s;b=k}}if(lab[i]!==b){lab[i]=b;ch=true}}
-  C=C.map((c,k)=>{const m=new Array(p).fill(0);let cnt=0;for(let i=0;i<n;i++)if(lab[i]===k){cnt++;for(let j=0;j<p;j++)m[j]+=X[i][j]}return cnt?m.map(v=>v/cnt):c});
-  if(!ch)break}
- return lab}
-function emRun(X,K,z,maxit=500){
- const n=X.length,p=X[0].length;const vtot=Array.from({length:p},(_,j)=>{const c=X.map(x=>x[j]);const m=mean(c);return c.reduce((s,v)=>s+(v-m)**2,0)/n});
- let pi=new Array(K),mu=Array.from({length:K},()=>new Array(p).fill(0)),s2=new Array(p).fill(1),ll=-Infinity,old=-Infinity;
- for(let it=0;it<maxit;it++){
-  const nk=new Array(K).fill(0);for(let i=0;i<n;i++)for(let k=0;k<K;k++)nk[k]+=z[i][k];
-  if(nk.some(v=>v<1e-3*n/K&&v<2))return null;
-  for(let k=0;k<K;k++){pi[k]=nk[k]/n;for(let j=0;j<p;j++){let s=0;for(let i=0;i<n;i++)s+=z[i][k]*X[i][j];mu[k][j]=s/nk[k]}}
-  for(let j=0;j<p;j++){let s=0;for(let i=0;i<n;i++)for(let k=0;k<K;k++)s+=z[i][k]*(X[i][j]-mu[k][j])**2;s2[j]=Math.max(s/n,1e-6*vtot[j]+1e-12)}
-  const base=-0.5*(p*Math.log(2*Math.PI)+s2.reduce((a,v)=>a+Math.log(v),0));ll=0;
-  for(let i=0;i<n;i++){const lp=new Array(K);let mx=-Infinity;
-   for(let k=0;k<K;k++){let q=0;for(let j=0;j<p;j++)q+=(X[i][j]-mu[k][j])**2/s2[j];lp[k]=Math.log(pi[k])+base-0.5*q;if(lp[k]>mx)mx=lp[k]}
-   let sm=0;for(let k=0;k<K;k++)sm+=Math.exp(lp[k]-mx);const lse=mx+Math.log(sm);ll+=lse;
-   for(let k=0;k<K;k++)z[i][k]=Math.exp(lp[k]-lse)}
-  if(!isFinite(ll))return null;
-  if(Math.abs(ll-old)<1e-8*(Math.abs(ll)+1e-10)&&it>3)break;old=ll}
- return{K,ll,pi:pi.slice(),mu:mu.map(m=>m.slice()),s2:s2.slice(),z,df:(K-1)+K*p+p}}
-function fitBest(X,K,r,nstart){const n=X.length;let best=null;
- for(let s=0;s<nstart;s++){
-  const lab=K===1?new Array(n).fill(0):(s%2===0?kmeansLabels(X,K,r):Array.from({length:n},()=>Math.floor(r()*K)));
-  const z=lab.map(l=>{const a=new Array(K).fill(K===1?0:1e-4);a[l]=1;const t=a.reduce((x,y)=>x+y,0);return a.map(v=>v/t)});
-  const m=emRun(X,K,z);if(m&&(!best||m.ll>best.ll))best=m;if(K===1&&best)break}
- return best}
-function classify(m){const K=m.K,n=m.z.length;const cl0=m.z.map(row=>row.indexOf(Math.max(...row)));
+/* ---------- classification helpers ---------- */
+function classify(m){const K=m.K;const cl0=m.z.map(row=>row.indexOf(Math.max(...row)));
  const cnt=new Array(K).fill(0);cl0.forEach(c=>cnt[c]++);const ord=[...Array(K).keys()].sort((a,b)=>cnt[b]-cnt[a]);
  const inv=new Array(K);ord.forEach((o,i)=>inv[o]=i);
  return{z:m.z.map(row=>ord.map(o=>row[o])),cl:cl0.map(c=>inv[c]),k:K}}
 function avgPP(z,cl,K){return Array.from({length:K},(_,j)=>{const idx=[];cl.forEach((c,i)=>{if(c===j)idx.push(i)});
  return Array.from({length:K},(_,k)=>idx.length?idx.reduce((s,i)=>s+z[i][k],0)/idx.length:NaN)})}
 function entropyRel(z,K){if(K<2)return NaN;let s=0;z.forEach(r=>r.forEach(v=>{const w=Math.max(v,1e-12);s+=-w*Math.log(w)}));return 1-s/(z.length*Math.log(K))}
-function simulate(m,n,r){const p=m.mu[0].length;const X=[];
- for(let i=0;i<n;i++){let u=r(),k=0,c=m.pi[0];while(u>c&&k<m.K-1){k++;c+=m.pi[k]}X.push(m.mu[k].map((mm,j)=>mm+Math.sqrt(m.s2[j])*randn(r)))}return X}
 
-async function buildFit(models,X,doBlrt,nboot,r,prog){
- const n=X.length,K=models.length;const blrt=new Array(K).fill(NaN);
- if(doBlrt){for(let k=2;k<=K;k++){
-   const m0=models[k-2],m1=models[k-1];if(!m0||!m1)continue;const obs=2*(m1.ll-m0.ll);let ge=0,valid=0;
-   for(let b=0;b<nboot;b++){const Xb=simulate(m0,n,r);const f0=fitBest(Xb,k-1,r,5),f1=fitBest(Xb,k,r,20);
-    if(f0&&f1){valid++;if(2*(f1.ll-f0.ll)>=obs)ge++}
-    if(b%2===0){prog('BLRT '+(k-1)+' vs '+k+' profiles: '+(b+1)+'/'+nboot);await tick()}}
-   blrt[k-1]=valid?(ge+1)/(valid+1):NaN}}
- const rows=models.map((m,i)=>{const k=i+1;if(!m)return{Profiles:k};const cc=classify(m);
+const FIT_HEAD=['Profiles','LogLik','Npar','AIC','BIC','SABIC','Entropy','BLRT p','LMR p','Min Class Prop','Max Class Prop','Min n','Min AvePP','Best-LL starts','Flag'];
+function buildFit(models,n,blrt){
+ return models.map((m,i)=>{const k=i+1;if(!m)return{Profiles:k,Flag:'Did not converge'};const cc=classify(m);
   const cnt=Array.from({length:k},(_,j)=>cc.cl.filter(c=>c===j).length);const pp=avgPP(cc.z,cc.cl,k);
   const minPP=k>=2?Math.min(...pp.map((r,j)=>r[j]).filter(v=>isFinite(v))):NaN;
+  let lmrP=NaN;if(k>=2&&models[i-1]){const a=models[i-1];lmrP=calcLRT(n,a.ll,a.df,a.K,m.ll,m.df,m.K).p}
+  const flags=[];if(Math.min(...cnt)/n<0.05||Math.min(...cnt)<20)flags.push('Very small class');
+  if(m.starts&&m.starts.n>1&&m.starts.hits===1)flags.push('Best LL reached once');
   return{Profiles:k,LogLik:m.ll,Npar:m.df,AIC:-2*m.ll+2*m.df,BIC:-2*m.ll+m.df*Math.log(n),SABIC:-2*m.ll+m.df*Math.log((n+2)/24),
-   Entropy:entropyRel(cc.z,k),'BLRT p':blrt[i],'Min Class Prop':Math.min(...cnt)/n,'Max Class Prop':Math.max(...cnt)/n,'Min n':Math.min(...cnt),'Min AvePP':minPP,
-   Flag:(Math.min(...cnt)/n<0.05||Math.min(...cnt)<20)?'Very small class':''}});
- return rows}
+   Entropy:entropyRel(cc.z,k),'BLRT p':blrt[i],'LMR p':lmrP,'Min Class Prop':Math.min(...cnt)/n,'Max Class Prop':Math.max(...cnt)/n,'Min n':Math.min(...cnt),'Min AvePP':minPP,
+   'Best-LL starts':m.starts?(m.starts.hits+'/'+m.starts.n):'',Flag:flags.join('; ')}})}
 
 /* ---------- table / chart helpers ---------- */
 function tableHtml(head,rows,numFrom=1,hl=-1){return '<table><tr>'+head.map((h,i)=>'<th class="'+(i>=numFrom?'n':'')+'">'+esc(h)+'</th>').join('')+'</tr>'+
  rows.map((r,ri)=>'<tr class="'+(ri===hl?'best':'')+'">'+r.map((c,i)=>'<td class="'+(i>=numFrom?'n':'')+'">'+(typeof c==='string'?esc(c):c)+'</td>').join('')+'</tr>').join('')+'</table>'}
 function lineChart(el,legendEl,cats,series,ylab){
- const B=cats.some(c=>String(c).length>6)?120:50;
- const W=680,H=380,L=58,R=20,T=14;
+ const W=680,H=360,L=58,R=16,T=14,B=cats.some(c=>String(c).length>6)?92:48;
  let lo=Infinity,hi=-Infinity;series.forEach(s=>s.vals.forEach((v,i)=>{const e=s.ses?s.ses[i]:0;if(isFinite(v)){lo=Math.min(lo,v-e);hi=Math.max(hi,v+e)}}));
  if(!isFinite(lo)){lo=0;hi=1}if(lo===hi){lo-=1;hi+=1}const pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
  const x=i=>L+(cats.length===1?(W-L-R)/2:i*(W-L-R)/(cats.length-1)),y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
- let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="100%" style="overflow:visible" role="img" font-family="IBM Plex Sans" font-size="11">';
+ let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" font-family="IBM Plex Sans" font-size="11">';
  for(let t=0;t<=5;t++){const v=lo+(hi-lo)*t/5;s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#e1e6e5"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end" fill="#5b6b69">'+(Math.abs(hi)>1000?v.toFixed(0):v.toFixed(2))+'</text>'}
  if(lo<0&&hi>0)s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#9aa8a6" stroke-dasharray="4 3"/>';
- cats.forEach((c,i)=>{const lbl=String(c);if(lbl.length>6)s+='<text transform="translate('+x(i)+','+(H-B+14)+') rotate(30)" text-anchor="start" fill="#14201f">'+esc(lbl.length>22?lbl.slice(0,21)+'…':lbl)+'</text>';
+ cats.forEach((c,i)=>{const lbl=String(c);if(lbl.length>6)s+='<text transform="translate('+x(i)+','+(H-B+14)+') rotate(35)" fill="#14201f">'+esc(lbl.length>18?lbl.slice(0,17)+'…':lbl)+'</text>';
   else s+='<text x="'+x(i)+'" y="'+(H-B+18)+'" text-anchor="middle" fill="#14201f">'+esc(lbl)+'</text>'});
  s+='<text transform="translate(14,'+(T+(H-T-B)/2)+') rotate(-90)" text-anchor="middle" fill="#5b6b69">'+esc(ylab)+'</text>';
  series.forEach((se,si)=>{const col=PAL[si%PAL.length];
@@ -348,11 +469,29 @@ function profileSeries(X,vars,cl,K){return Array.from({length:K},(_,k)=>{const i
 function dlCSV(name,head,rows){const q=v=>{const s=String(v===undefined||v===null?'':v);return /[",\n;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
  const blob=new Blob(['\uFEFF'+[head,...rows].map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'});
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
+function dlText(name,text){const blob=new Blob([text],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
 
 /* ---------- LPA ---------- */
 function zscore(X0){const p=X0[0].length;const ms=[],ss=[];for(let j=0;j<p;j++){const c=X0.map(r=>r[j]);ms.push(mean(c));ss.push(sd(c))}return X0.map(r=>r.map((v,j)=>(v-ms[j])/ss[j]))}
 function completeRows(vars){const D=S.data;const idx=[],X0=[];
  for(let i=0;i<D.n;i++){const row=vars.map(v=>safeNum(D.cols[v][i]));if(row.every(isFinite)){idx.push(i);X0.push(row)}}return{idx,X0}}
+
+function makeLog(o){const L=[];
+ L.push('SPPLab LPA Studio v'+VERSION+' - analysis log');L.push('Date: '+new Date().toISOString());
+ L.push('Rows in file: '+o.nTotal+' | complete cases used: '+o.n+' | dropped (missing on indicators): '+(o.nTotal-o.n));
+ L.push('Indicators: '+o.vars.join(', ')+' | z-standardized: '+(o.scaled?'yes':'no'));
+ L.push('Covariance structure: '+o.model+' ('+MODELS[o.model]+')'+(o.cmp?' | all 4 structures fitted for BIC comparison':''));
+ L.push('Solutions: K = 1..'+o.K+' | random starts per solution (K >= 2): '+o.nstart+' (k-means++ and random partitions, alternating)');
+ L.push('EM: relative LogLik tolerance 1e-8, max 1000 iterations, variance floor 1e-6 x total variance | seed = '+o.seed+' (task seeds are derived from it; results do not depend on the number of workers)');
+ L.push(o.B?'BLRT: B = '+o.B+' bootstrap samples per comparison; starts per bootstrap sample: '+o.ns0+' (K-1 model, plus one start from the generating parameters) / '+o.bs+' (K model); p = (1 + #{LR* >= LR_obs}) / (1 + B_valid)':'BLRT: not computed');
+ L.push('LMR-LRT: adjusted Lo-Mendell-Rubin formula as in tidyLPA::calc_lrt (not guaranteed identical to Mplus VLMR)');
+ L.push('Compute: '+(o.nw?o.nw+' Web Workers':'main thread (Web Workers unavailable)')+' | elapsed: '+o.secs.toFixed(1)+' s');
+ L.push('');L.push('Best-LogLik reproducibility (starts reaching the best LogLik within 0.001):');
+ o.models.forEach((m,i)=>{if(m&&m.starts)L.push('  K='+(i+1)+': LogLik '+m.ll.toFixed(3)+' reached in '+m.starts.hits+' of '+m.starts.n+' starts ('+m.starts.fail+' failed)');else L.push('  K='+(i+1)+': no converged solution')});
+ if(o.B){L.push('');L.push('BLRT valid bootstrap samples:');o.binfo.forEach((b,i)=>{if(b)L.push('  '+i+' vs '+(i+1)+' profiles: '+b.valid+' of '+b.B+' valid')})}
+ return L.join('\n')}
+
+$('cancelBtn').addEventListener('click',()=>{if(S.pool)S.pool.close()});
 $('runLpa').addEventListener('click',async()=>{
  if(!S.data){toast('Load data first.');return}
  const vars=picked('lpaVars'),K=parseInt($('maxK').value);
@@ -360,45 +499,111 @@ $('runLpa').addEventListener('click',async()=>{
  if(!(K>=2&&K<=8)){toast('Maximum K must be between 2 and 8.');return}
  const{idx,X0}=completeRows(vars);if(idx.length<30){toast('Fewer than 30 complete cases; LPA is not reliable.');return}
  if(vars.some((_,j)=>sd(X0.map(r=>r[j]))===0)){toast('At least one indicator has zero variance.');return}
- const btn=$('runLpa');btn.disabled=true;const prog=m=>$('lpaProg').textContent=m;
- try{const scaled=$('scaleVars').checked;const X=scaled?zscore(X0):X0;const r=rng(parseInt($('seed').value)||123);const models=[];
-  for(let k=1;k<=K;k++){prog('Fitting '+k+'-profile model...');await tick();models.push(fitBest(X,k,r,k<=2?20:100))}
-  const fit=await buildFit(models,X,$('runBlrt').checked,Math.max(19,parseInt($('nboot').value)||50),r,prog);
-  S.lpa={models,X,X0,vars,idx,scaled,fit,nTotal:S.data.n};
+ const model=$('model').value,cmp=$('cmpAll').checked,nstart=Math.max(5,parseInt($('nstart').value)||100);
+ const seed=parseInt($('seed').value)||123,doB=$('runBlrt').checked,B=Math.max(19,parseInt($('nboot').value)||100),bs=Math.max(3,parseInt($('bstart').value)||20);
+ const ns0=Math.max(3,Math.round(bs/2));
+ const btn=$('runLpa');btn.disabled=true;$('cancelBtn').disabled=false;const prog=m=>$('lpaProg').textContent=m;
+ const nw=workerCount();const pool=new Pool(nw);S.pool=pool;const t0=performance.now();
+ const where=()=>pool.fallback?' (main thread)':' ('+pool.w.length+' workers)';
+ try{const scaled=$('scaleVars').checked;const X=scaled?zscore(X0):X0;
+  const list=cmp?['EEI','EEE','VVI','VVV']:[model];const tasks=[],keys=[];
+  list.forEach(mm=>{for(let k=1;k<=K;k++){tasks.push({type:'fit',X,K:k,model:mm,nstart:nstart,seed:mixSeed(seed,k,MIDX[mm])});keys.push([mm,k])}});
+  let done=0;prog('Fitting models: 0/'+tasks.length+where());
+  const res=await Promise.all(tasks.map(t=>pool.run(t).then(r=>{done++;prog('Fitting models: '+done+'/'+tasks.length+where());return r})));
+  if(res.some(r=>r&&r.cancelled))throw new Error('Analysis cancelled.');
+  const all={};list.forEach(mm=>all[mm]=new Array(K).fill(null));
+  res.forEach((r,i)=>{const[mm,k]=keys[i];all[mm][k-1]=(r&&r.ok)?r.m:null;if(r&&r.err)console.error(r.err)});
+  const models=all[model];
+  const blrt=new Array(K).fill(NaN),binfo=new Array(K).fill(null);
+  if(doB){for(let k=2;k<=K;k++){const m0=models[k-2],m1=models[k-1];if(!m0||!m1)continue;
+    const obs=2*(m1.ll-m0.ll),s0=strip(m0);const bt=[];
+    for(let b=0;b<B;b++)bt.push({type:'boot',m0:s0,n:X.length,k,model,ns0,ns1:bs,seed:mixSeed(seed,9999,k,b)});
+    let d2=0;prog('BLRT '+(k-1)+' vs '+k+' profiles: 0/'+B+where());
+    const rr=await Promise.all(bt.map(t=>pool.run(t).then(r=>{d2++;if(d2%5===0||d2===B)prog('BLRT '+(k-1)+' vs '+k+' profiles: '+d2+'/'+B+where());return r})));
+    if(rr.some(r=>r&&r.cancelled))throw new Error('Analysis cancelled.');
+    let ge=0,valid=0;rr.forEach(r=>{if(r&&r.ok){valid++;if(r.stat>=obs)ge++}});
+    blrt[k-1]=valid?(ge+1)/(valid+1):NaN;binfo[k-1]={B,valid}}}
+  const fit=buildFit(models,X.length,blrt);
+  const secs=(performance.now()-t0)/1000;
+  const log=makeLog({nTotal:S.data.n,n:X.length,vars,scaled,model,cmp,K,nstart,seed,B:doB?B:0,ns0,bs,binfo,models,nw:pool.fallback?0:nw,secs});
+  S.lpa={models,all,X,X0,vars,idx,scaled,fit,nTotal:S.data.n,n:X.length,model,K,nstart,seed,B:doB?B:0,bs,ns0,log};
   const cand=fit.filter(f=>f.Profiles>=2&&isFinite(f.BIC));
-  if(!cand.length){toast('No model with 2+ profiles converged.');prog('');btn.disabled=false;return}
+  if(!cand.length){toast('No model with 2+ profiles converged.');prog('');return}
   const best=cand.reduce((a,b)=>b.BIC<a.BIC?b:a);
   $('selK').innerHTML=cand.map(f=>'<option value="'+f.Profiles+'"'+(f.Profiles===best.Profiles?' selected':'')+'>'+f.Profiles+' profiles</option>').join('');
-  prog('Done. n used = '+idx.length+' of '+S.data.n+'.');renderLPA();toast('LPA finished.')}
- catch(e){console.error(e);toast('Error: '+e.message);prog('')}
- btn.disabled=false});
+  prog('Done in '+secs.toFixed(1)+' s. n used = '+X.length+' of '+S.data.n+'.');renderLPA();toast('LPA finished.')}
+ catch(e){console.error(e);toast(e.message||'Error');prog('')}
+ finally{pool.close();S.pool=null;btn.disabled=false;$('cancelBtn').disabled=true}});
 $('selK').addEventListener('change',()=>{if(S.lpa)renderLPA()});
 
 function getFinal(){const L=S.lpa;if(!L)return null;const k=parseInt($('selK').value);const m=L.models[k-1];if(!m)return null;
  const cc=classify(m);const cols={};S.data.names.forEach(n=>cols[n]=L.idx.map(i=>S.data.cols[n][i]));
  cols.LPA_Class=cc.cl.map(c=>String(c+1));return{k,model:m,cc,cols,names:[...S.data.names,'LPA_Class'],n:L.idx.length}}
+
+function residCorr(L,F){const X=L.X,p=L.vars.length,out=[];
+ for(let k=0;k<F.k;k++){const w=F.cc.z.map(r=>r[k]);const sw=w.reduce((a,b)=>a+b,0);
+  const m=L.vars.map((_,j)=>X.reduce((s,r,i)=>s+w[i]*r[j],0)/sw);
+  const c=Array.from({length:p},()=>new Array(p).fill(0));
+  X.forEach((r,i)=>{for(let a=0;a<p;a++)for(let b=0;b<p;b++)c[a][b]+=w[i]*(r[a]-m[a])*(r[b]-m[b])});
+  out.push('Profile '+(k+1)+' (effective n = '+sw.toFixed(1)+'):');
+  out.push(''.padEnd(11)+L.vars.map(v=>v.slice(0,9).padStart(10)).join(''));
+  for(let a=0;a<p;a++){out.push(L.vars[a].slice(0,10).padEnd(11)+c[a].map((v,b)=>(v/Math.sqrt(c[a][a]*c[b][b])).toFixed(2).padStart(10)).join(''))}
+  out.push('')}
+ return out.join('\n')}
+
 function renderLPA(){const L=S.lpa,F=getFinal();S.fin=F;if(!F)return;
  const ft=L.fit;const cand=ft.filter(f=>f.Profiles>=2&&isFinite(f.BIC));const bestK=cand.reduce((a,b)=>b.BIC<a.BIC?b:a).Profiles;
- const head=['Profiles','LogLik','Npar','AIC','BIC','SABIC','Entropy','BLRT p','Min Class Prop','Max Class Prop','Min n','Min AvePP','Flag'];
- $('fitTable').innerHTML=tableHtml(head,ft.map(f=>[String(f.Profiles),fx(f.LogLik,2),fx(f.Npar,0),fx(f.AIC,2),fx(f.BIC,2),fx(f.SABIC,2),fx(f.Entropy),fp(f['BLRT p']),fx(f['Min Class Prop']),fx(f['Max Class Prop']),fx(f['Min n'],0),fx(f['Min AvePP']),f.Flag||'']),1,ft.findIndex(f=>f.Profiles===bestK));
+ $('fitTable').innerHTML=tableHtml(FIT_HEAD,ft.map(f=>[String(f.Profiles),fx(f.LogLik,2),fx(f.Npar,0),fx(f.AIC,2),fx(f.BIC,2),fx(f.SABIC,2),fx(f.Entropy),fp(f['BLRT p']),fp(f['LMR p']),fx(f['Min Class Prop']),fx(f['Max Class Prop']),fx(f['Min n'],0),fx(f['Min AvePP']),f['Best-LL starts']||'—',f.Flag||'']),1,ft.findIndex(f=>f.Profiles===bestK));
  lineChart('icPlot','icLegend',ft.map(f=>f.Profiles+' profile'+(f.Profiles>1?'s':'')),['AIC','BIC','SABIC'].map(k=>({name:k,vals:ft.map(f=>f[k])})),'Information criterion');
  lineChart('lpaPlot','lpaLegend',L.vars,profileSeries(L.X,L.vars,F.cc.cl,F.k),L.scaled?'Z-score mean':'Raw mean');
+ const keys=Object.keys(L.all);
+ if(keys.length>1){const bic=m=>m?-2*m.ll+m.df*Math.log(L.n):NaN;const rows=[];
+  for(let k=1;k<=L.K;k++){const v=keys.map(mm=>bic(L.all[mm][k-1]));const fin=v.filter(isFinite);const mn=fin.length?Math.min(...fin):NaN;
+   rows.push([String(k),...v.map(x=>fx(x,2)),isFinite(mn)?keys[v.indexOf(mn)]:'—'])}
+  $('cmpTable').innerHTML=tableHtml(['Profiles',...keys.map(k=>k+' BIC'),'Lowest BIC'],rows);$('cmpPanel').style.display='block'}
+ else $('cmpPanel').style.display='none';
  const cnt=Array.from({length:F.k},(_,j)=>F.cc.cl.filter(c=>c===j).length);
  $('countTable').innerHTML=tableHtml(['Profile','Count (n)','Proportion (%)'],cnt.map((c,j)=>['Profile '+(j+1),String(c),(100*c/F.n).toFixed(2)]));
  const M=avgPP(F.cc.z,F.cc.cl,F.k);
  $('probTable').innerHTML=tableHtml(['Assigned profile',...M.map((_,j)=>'P(Profile '+(j+1)+')')],M.map((r,j)=>['Profile '+(j+1),...r.map(v=>fx(v))]));
  const rr=[];L.vars.forEach((v,j)=>{for(let k=0;k<F.k;k++){const x=[];F.cc.cl.forEach((c,i)=>{if(c===k)x.push(L.X0[i][j])});rr.push([v,'Profile '+(k+1),String(x.length),fx(mean(x)),fx(sd(x))])}});
  $('rawMeans').innerHTML=tableHtml(['Variable','Profile','n','Mean','SD'],rr,2);
+ $('locDep').textContent=residCorr(L,F);
+ $('logOut').textContent=L.log;
+ const parts=['AIC','BIC','SABIC','relative entropy'];if(L.B)parts.push('the bootstrap likelihood ratio test (BLRT; '+L.B+' bootstrap samples)');parts.push("the adjusted Lo-Mendell-Rubin likelihood ratio test (LMR-LRT; tidyLPA formulation)");parts.push('average posterior probabilities, and the size and interpretability of the profiles');
  $('cite').textContent=
-"--- IN-TEXT METHODOLOGY STATEMENT ---\nLatent Profile Analysis (LPA) was conducted using LPA Studio (Senel, 2026), an open-source web application developed by the Sport and Performance Psychology Lab (SPPLab). Gaussian finite mixture models with equal indicator variances across profiles and covariances constrained to zero (Model 1; equivalent to the mclust 'EEI' parameterization; Scrucca et al., 2016) were estimated with the expectation-maximization algorithm using 10 k-means-based random starts per solution"+(L.scaled?", after z-standardizing the indicators":"")+". Solutions with 1 to "+ft.length+" profiles were compared using AIC, BIC, SABIC, relative entropy, the bootstrap likelihood ratio test (BLRT), average posterior probabilities, and the size and interpretability of the profiles (Nylund et al., 2007). "+F.k+" profiles were retained. Analyses were based on "+F.n+" complete cases.\n\n--- SUGGESTED REFERENCES (APA 7) ---\nSenel, E. (2026). LPA Studio: Open source web application for Latent Profile Analysis [Computer software]. Sport and Performance Psychology Lab (SPPLab).\nNylund, K. L., Asparouhov, T., & Muthen, B. O. (2007). Deciding on the number of classes in latent class analysis and growth mixture modeling. Structural Equation Modeling, 14(4), 535-569.\nScrucca, L., Fop, M., Murphy, T. B., & Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. The R Journal, 8(1), 289-317.";
- // dependent tabs
+"--- IN-TEXT METHODOLOGY STATEMENT ---\nLatent Profile Analysis (LPA) was conducted using LPA Studio v"+VERSION+" (Senel, 2026), an open-source web application developed by the Sport and Performance Psychology Lab (SPPLab). Gaussian finite mixture models with "+MODELS[L.model].replace(/^Model \d: /,'')+" (Model "+MIDX[L.model]+"; the '"+L.model+"' parameterization of mclust; Scrucca et al., 2016) were estimated with the expectation-maximization algorithm using "+L.nstart+" random starts (k-means++ and random partitions) per solution, with a fixed random seed ("+L.seed+")"+(L.scaled?", after z-standardizing the indicators":"")+". Solutions with 1 to "+ft.length+" profiles were compared using "+parts.join(', ')+" (Nylund et al., 2007; Lo et al., 2001). "+F.k+" profiles were retained. Analyses were based on "+F.n+" complete cases.\n\n--- SUGGESTED REFERENCES (APA 7) ---\nSenel, E. (2026). LPA Studio: Open source web application for Latent Profile Analysis [Computer software]. Sport and Performance Psychology Lab (SPPLab).\nLo, Y., Mendell, N. R., & Rubin, D. B. (2001). Testing the number of components in a normal mixture. Biometrika, 88(3), 767-778.\nNylund, K. L., Asparouhov, T., & Muthen, B. O. (2007). Deciding on the number of classes in latent class analysis and growth mixture modeling. Structural Equation Modeling, 14(4), 535-569.\nScrucca, L., Fop, M., Murphy, T. B., & Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. The R Journal, 8(1), 289-317.";
  const opts=S.data.names.map(n=>'<option>'+esc(n)+'</option>').join('');$('demoVar').innerHTML=opts;
  picker('regVars',S.data.names);
  $('regRef').innerHTML=Array.from({length:F.k},(_,j)=>'<option value="'+(j+1)+'">Profile '+(j+1)+'</option>').join('')}
-$('dlFit').addEventListener('click',()=>{if(!S.lpa)return;const h=['Profiles','LogLik','Npar','AIC','BIC','SABIC','Entropy','BLRT p','Min Class Prop','Max Class Prop','Min n','Min AvePP','Flag'];dlCSV('lpa_fit_table.csv',h,S.lpa.fit.map(f=>h.map(k=>f[k])))});
+$('dlFit').addEventListener('click',()=>{if(!S.lpa)return;dlCSV('lpa_fit_table.csv',FIT_HEAD,S.lpa.fit.map(f=>FIT_HEAD.map(k=>f[k])))});
+$('dlLog').addEventListener('click',()=>{if(!S.lpa){toast('Run the LPA first.');return}dlText('lpa_analysis_log.txt',S.lpa.log)});
 $('dlData').addEventListener('click',()=>{const F=S.fin;if(!F)return;
  const h=[...F.names,...Array.from({length:F.k},(_,j)=>'Prob_Profile'+(j+1))];
  dlCSV('lpa_data_with_profiles.csv',h,Array.from({length:F.n},(_,i)=>[...F.names.map(n=>F.cols[n][i]),...F.cc.z[i].map(v=>v.toFixed(4))]))});
+
+/* ---------- self-test ---------- */
+$('selfTest').addEventListener('click',async()=>{
+ const out=[];const chk=(name,ok,det)=>out.push((ok?'PASS  ':'FAIL  ')+name+(det?'\n        '+det:''));
+ $('selfOut').textContent='Running...';await tick();
+ const c=calcLRT(150,-741.02,8,1,-488.91,13,2);
+ chk('LMR-LRT reproduces the tidyLPA calc_lrt() documentation example',Math.abs(c.lr-504.220)<0.001&&Math.abs(c.mod-472.769)<0.001&&c.df===5,'LR = '+c.lr.toFixed(3)+' (expected 504.220), LMR = '+c.mod.toFixed(3)+' (expected 472.769), df = '+c.df+' (expected 5)');
+ const a1=pChi(3.841459,1);chk('Chi-square tail: P(X2(1) > 3.8415) = .05',Math.abs(a1-0.05)<1e-4,'got '+a1.toFixed(5));
+ const a2=pT2(2.042272,30);chk('Student t tail: 2P(T30 > 2.0423) = .05',Math.abs(a2-0.05)<1e-3,'got '+a2.toFixed(5));
+ const r=rng(11),n=400,X=[];for(let i=0;i<n;i++){const c0=r()<0.6?1.2:-1.2;X.push([0,1,2,3].map(()=>c0+randn(r)))}
+ const fits={};for(const mm of ['EEI','VVI','EEE','VVV']){await tick();fits[mm]=fitBest(X,2,mm,5,20,null)}
+ const e=fits.EEI;
+ if(e){const pis=e.pi.slice().sort((x,y)=>y-x),mus=e.mu.map(mean).sort((x,y)=>y-x);
+  chk('EM (EEI) recovers two simulated profiles (true: 60/40, means +1.2/-1.2)',Math.abs(pis[0]-0.6)<0.07&&Math.abs(mus[0]-1.2)<0.3&&Math.abs(mus[1]+1.2)<0.3,'proportions '+pis.map(v=>v.toFixed(3)).join('/')+', mean levels '+mus.map(v=>v.toFixed(2)).join('/'))}
+ else chk('EM (EEI) recovers two simulated profiles',false,'no solution');
+ const df={EEI:13,VVI:17,EEE:19,VVV:29};
+ chk('Parameter counts (K = 2, p = 4): EEI 13, VVI 17, EEE 19, VVV 29',Object.keys(df).every(k=>fits[k]&&fits[k].df===df[k]),Object.keys(df).map(k=>k+' = '+(fits[k]?fits[k].df:'NA')).join(', '));
+ const ll=k=>fits[k]?fits[k].ll:NaN;
+ chk('Nesting consistency of LogLik (tolerance 0.5): VVV ≥ EEE ≥ EEI and VVV ≥ VVI ≥ EEI',ll('VVV')>=ll('EEE')-0.5&&ll('EEE')>=ll('EEI')-0.5&&ll('VVV')>=ll('VVI')-0.5&&ll('VVI')>=ll('EEI')-0.5,'EEI '+ll('EEI').toFixed(2)+' | VVI '+ll('VVI').toFixed(2)+' | EEE '+ll('EEE').toFixed(2)+' | VVV '+ll('VVV').toFixed(2));
+ const t1=rng(3),Xs=simulate(fits.VVV||e,2000,t1);const mm2=mean(Xs.map(v=>v[0]));
+ chk('Simulator draws finite data from a fitted model',Xs.every(v=>v.every(isFinite))&&isFinite(mm2),'mean of variable 1 = '+mm2.toFixed(3));
+ out.push('','These checks test internal consistency only. They do not replace the comparison with R (mclust) on your own data.');
+ $('selfOut').textContent=out.join('\n');toast(out.some(l=>l.startsWith('FAIL'))?'Self-test: some checks FAILED.':'Self-test: all checks passed.')});
 
 /* ---------- Group comparisons ---------- */
 function crosstabStats(cnt){const R=cnt.length,C=cnt[0].length,rs=cnt.map(r=>r.reduce((a,b)=>a+b,0)),cs=cnt[0].map((_,j)=>cnt.reduce((a,r)=>a+r[j],0)),n=rs.reduce((a,b)=>a+b,0);
@@ -448,7 +653,6 @@ function mnlogit(Xd,y,J){const n=Xd.length,q=Xd[0].length,m=(J-1)*q;let beta=new
    for(let j=1;j<J;j++){const rj=(y[i]===j?1:0)-P[j];for(let a=0;a<q;a++){g[(j-1)*q+a]+=rj*x[a];
      for(let l=1;l<J;l++){const w=P[j]*((j===l?1:0)-P[l]);if(l>=j)for(let b=0;b<q;b++){I[(j-1)*q+a][(l-1)*q+b]+=w*x[a]*x[b]}}}}}
   for(let r=0;r<m;r++)for(let c=0;c<r;c++){} 
-  // symmetrize (only l>=j was filled)
   for(let r=0;r<m;r++)for(let c=0;c<m;c++){if(I[r][c]===0&&I[c][r]!==0)I[r][c]=I[c][r]}
   for(let r=0;r<m;r++)I[r][r]+=1e-8;
   const inv=solveInv(I);if(!inv)return null;
@@ -458,7 +662,7 @@ function mnlogit(Xd,y,J){const n=Xd.length,q=Xd[0].length,m=(J-1)*q;let beta=new
  const cov=solveInv(I);return{beta,cov,ll,q,J}}
 $('runReg').addEventListener('click',()=>{const F=S.fin;if(!F){toast('Run the LPA first.');return}
  const preds=picked('regVars').filter(p=>p!=='LPA_Class');if(!preds.length){toast('Select at least one predictor.');return}
- const ref=$('regRef').value,std=$('regScale').checked;const cols=[],names=['(Intercept)'];
+ const ref=$('regRef').value,std=$('regScale').checked;
  const keep=F.cols.LPA_Class.map((_,i)=>true);const colsV=[];
  preds.forEach(p=>{const raw=F.cols[p];const isNum=S.data.num.includes(p);
   if(isNum){const v=raw.map(safeNum);v.forEach((x,i)=>{if(!isFinite(x))keep[i]=false});colsV.push({name:p,type:'n',v})}
@@ -491,9 +695,12 @@ $('runLpta').addEventListener('click',async()=>{
  const all=[...new Set([...v1,...v2])];const{idx,X0}=completeRows(all);if(idx.length<30){toast('Fewer than 30 complete longitudinal cases.');return}
  const sub=(vs)=>X0.map(r=>vs.map(v=>r[all.indexOf(v)]));let A=sub(v1),B=sub(v2);
  if($('lptaScale').checked){A=zscore(A);B=zscore(B)}
- const btn=$('runLpta');btn.disabled=true;$('lptaProg').textContent='Fitting models...';await tick();
- try{const r=rng(123);const m1=fitBest(A,K,r,10),m2=fitBest(B,K,r,10);
-  if(!m1||!m2){toast('A model failed to converge; try a smaller K.');btn.disabled=false;$('lptaProg').textContent='';return}
+ const model=$('model').value,nst=Math.max(5,parseInt($('lptaStarts').value)||100),seed=parseInt($('seed').value)||123;
+ const btn=$('runLpta');btn.disabled=true;$('lptaProg').textContent='Fitting models ('+model+', '+nst+' starts per time point)...';await tick();
+ const pool=new Pool(Math.min(2,workerCount()));
+ try{const[q1,q2]=await Promise.all([pool.run({type:'fit',X:A,K,model,nstart:nst,seed:mixSeed(seed,K,101)}),pool.run({type:'fit',X:B,K,model,nstart:nst,seed:mixSeed(seed,K,202)})]);
+  const m1=(q1&&q1.ok)?q1.m:null,m2=(q2&&q2.ok)?q2.m:null;
+  if(!m1||!m2){toast('A model failed to converge; try a smaller K.');$('lptaProg').textContent='';return}
   const c1=classify(m1),c2=classify(m2);
   const cnt=Array.from({length:K},(_,i)=>Array.from({length:K},(_,j)=>c1.cl.reduce((s,c,t)=>s+(c===i&&c2.cl[t]===j?1:0),0)));
   const rs=cnt.map(r=>r.reduce((a,b)=>a+b,0));
@@ -502,6 +709,8 @@ $('runLpta').addEventListener('click',async()=>{
   lineChart('plot2','leg2',v2,profileSeries(B,v2,c2.cl,K),$('lptaScale').checked?'Z-score mean':'Raw mean');
   const n=idx.length,po=cnt.reduce((s,r,i)=>s+r[i],0)/n,cs=cnt[0].map((_,j)=>cnt.reduce((a,r)=>a+r[j],0)),pe=rs.reduce((s,v,i)=>s+v*cs[i],0)/n**2;
   const ok=rs.every(v=>v>0)&&cs.every(v=>v>0);const out=['=== LATENT PROFILE TRANSITION ANALYSIS (LPTA) SUMMARY ===','','Longitudinal complete cases (n): '+n,
+   'Covariance structure: '+model+' | random starts per time point: '+nst+' | seed: '+seed,
+   'Best-LL starts T1: '+m1.starts.hits+'/'+m1.starts.n+' (LogLik '+m1.ll.toFixed(2)+') | T2: '+m2.starts.hits+'/'+m2.starts.n+' (LogLik '+m2.ll.toFixed(2)+')',
    'Relative entropy T1: '+fx(entropyRel(c1.z,K))+' | T2: '+fx(entropyRel(c2.z,K)),'','Row transition probabilities (%):'];
   cnt.forEach((row,i)=>out.push('T1-P'+(i+1)+'  '+row.map(c=>(rs[i]?100*c/rs[i]:0).toFixed(1).padStart(7)).join('')));
   if(ok){const st=crosstabStats(cnt);out.push('','Chi-square test of association between T1 and T2 profiles:','X2('+st.df+') = '+st.chi.toFixed(3)+', p = '+fp(st.p),"Cramer's V = "+st.V.toFixed(3));if(st.minE<5)out.push('Warning: some expected counts < 5; interpret p with caution.')}
@@ -509,7 +718,8 @@ $('runLpta').addEventListener('click',async()=>{
    'Note: diagonal-based indices assume Profile i at T1 is substantively the same as Profile i at T2. Verify with the plots.');
   $('lptaOut').textContent=out.join('\n');$('lptaProg').textContent='Done.';toast('LPTA finished.')}
  catch(e){console.error(e);toast('Error: '+e.message)}
- btn.disabled=false});
+ finally{pool.close();btn.disabled=false}});
 </script>
 </body>
 </html>
+
