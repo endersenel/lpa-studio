@@ -1,525 +1,1026 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>SPPLab - LPA Studio</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
+
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <style>
+
 :root{--bg:#f4f6f5;--ink:#14201f;--mute:#5b6b69;--line:#d3dad8;--acc:#0f766e;--accd:#0b5a54;--band:#14201f;--bandt:#d9e8e5;--warn:#9a3412}
+
 *{box-sizing:border-box}
+
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
+
 header{background:var(--band);color:var(--bandt);padding:14px 20px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+
 header h1{margin:0;font-size:18px;letter-spacing:.01em;font-weight:600}
+
 header span{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#8fb3ad}
+
 nav{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line);background:#fff}
+
 nav button{border:0;border-right:1px solid var(--line);background:#fff;padding:11px 16px;font:500 13px 'IBM Plex Sans';color:var(--mute);cursor:pointer}
+
 nav button.on{background:var(--acc);color:#fff}
+
 nav button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
 main{padding:18px 20px;max-width:1280px;margin:0 auto}
+
 .tab{display:none}.tab.on{display:block}
+
 .grid{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+
 @media(max-width:860px){.grid{grid-template-columns:1fr}}
+
 .panel{border-top:2px solid var(--ink);padding:12px 0 18px}
+
 .panel h2{margin:0 0 10px;font:600 11px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--mute)}
+
 .side{background:#fff;border:1px solid var(--line);padding:14px}
+
 label.f{display:block;margin:10px 0 3px;font-size:12px;font-weight:600}
+
 input[type=number],input[type=text],select,input[type=file]{width:100%;border:1px solid var(--line);background:#fff;padding:6px 8px;font:13px 'IBM Plex Sans';border-radius:0}
+
 .chk{display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px}
+
 .chk input{width:auto}
+
 .btn{background:var(--acc);color:#fff;border:0;padding:9px 14px;font:600 13px 'IBM Plex Sans';cursor:pointer;margin-top:10px;border-radius:0}
+
 .btn:hover{background:var(--accd)}.btn:disabled{background:#8aa5a1;cursor:wait}
+
 .btn.alt{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+
 .btn.alt:hover{background:#e9eeed}
+
 .picker{max-height:190px;overflow:auto;border:1px solid var(--line);padding:4px 8px;background:#fff}
+
 .picker label{display:flex;gap:7px;align-items:center;padding:2px 0;font-size:13px;cursor:pointer}
+
 .picker input{width:auto}
+
 .note{font-size:12px;color:var(--mute);margin:8px 0}
+
 .warn{color:var(--warn)}
+
 table{border-collapse:collapse;width:100%;font-size:12.5px}
+
 .tw{overflow-x:auto;border:1px solid var(--line);background:#fff;margin:6px 0}
+
 th{background:#e7edec;text-align:left;padding:6px 9px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--line)}
+
 td{padding:5px 9px;border-bottom:1px solid #e6ebea;white-space:nowrap;font-variant-numeric:tabular-nums}
+
 td.n,th.n{text-align:right}
+
 tr.best td{background:#e1f1ee;font-weight:600}
+
 pre{background:#fff;border:1px solid var(--line);padding:12px;font:12px/1.55 'IBM Plex Mono',monospace;overflow:auto;white-space:pre-wrap;margin:6px 0}
-.chart{background:#fff;border:1px solid var(--line);padding:12px 8px 16px;overflow:hidden}
-.chart svg{display:block;width:100%;height:auto;max-height:420px}
+
+.chart{background:#fff;border:1px solid var(--line);padding:8px}
+
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;padding:4px 8px}
+
 .legend i{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-2px}
+
 .prog{font:12px 'IBM Plex Mono',monospace;color:var(--acc);margin-top:8px;min-height:18px}
+
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
 @media(max-width:860px){.two{grid-template-columns:1fr}}
+
 #toast{position:fixed;bottom:16px;right:16px;background:var(--ink);color:#fff;padding:10px 14px;display:none;max-width:340px;font-size:13px}
+
 footer{padding:20px;text-align:center;font-size:12px;color:var(--mute)}
+
 @media(prefers-reduced-motion:no-preference){.btn{transition:background .15s}}
+
 </style>
+
 </head>
+
 <body>
+
 <header><h1>SPPLab - LPA Studio</h1><span>Sport and Performance Psychology Lab</span></header>
+
 <nav id="nav">
+
 <button class="on" data-t="t1">1. Data Import</button>
+
 <button data-t="t2">2. LPA Analysis</button>
+
 <button data-t="t3">3. Group Comparisons</button>
+
 <button data-t="t4">4. Logistic Regression</button>
+
 <button data-t="t5">5. Longitudinal LPTA</button>
+
 </nav>
+
 <main>
 
+
+
 <!-- TAB 1 -->
+
 <section class="tab on" id="t1">
+
 <div class="grid">
+
 <div class="side">
+
 <label class="f">Upload dataset (.csv, .xlsx, .xls)</label>
+
 <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls">
+
 <p class="note">CSV: comma, semicolon or tab separated; decimal commas are handled. SPSS .sav files cannot be read in the browser: export to CSV or Excel first. Data never leaves your device.</p>
+
 <button class="btn alt" id="demoBtn">Load demo data (n = 300)</button>
+
 <pre id="dataInfo" style="margin-top:12px">No data loaded.</pre>
+
 </div>
+
 <div class="panel"><h2>Dataset preview (first 50 rows)</h2><div class="tw" id="preview"></div></div>
+
 </div>
+
 </section>
+
+
 
 <!-- TAB 2 -->
+
 <section class="tab" id="t2">
+
 <div class="grid">
+
 <div class="side">
+
 <label class="f">LPA indicator variables (at least 2)</label>
+
 <div class="picker" id="lpaVars"><span class="note">Load data first.</span></div>
+
 <label class="f">Maximum number of profiles (K)</label>
+
 <input type="number" id="maxK" value="4" min="2" max="8">
+
 <div class="chk"><input type="checkbox" id="scaleVars" checked><label for="scaleVars">Standardize indicators before estimation (Z-score)</label></div>
+
 <div class="chk"><input type="checkbox" id="runBlrt" checked><label for="runBlrt">Compute BLRT (bootstrap; slower)</label></div>
+
 <label class="f">BLRT bootstrap samples</label>
+
 <input type="number" id="nboot" value="50" min="19" max="500" step="10">
+
 <label class="f">Random seed</label>
+
 <input type="number" id="seed" value="123" min="1">
+
 <button class="btn" id="runLpa">Run LPA Analysis</button>
+
 <div class="prog" id="lpaProg"></div>
+
 <label class="f" style="margin-top:14px">Profile solution used in plots, tables and Tabs 3-4</label>
+
 <select id="selK"></select>
+
 <p class="note">Specification: Model 1 (equal variances, covariances fixed to 0; mclust "EEI"), estimated by the EM algorithm with 10 k-means starts.</p>
+
 </div>
+
 <div>
+
 <div class="panel"><h2>Profile plot (means ± SE)</h2><div class="chart" id="lpaPlot"></div><div class="legend" id="lpaLegend"></div></div>
+
 <div class="panel"><h2>Model fit indices & comparative statistics</h2>
+
 <div class="tw" id="fitTable"></div>
+
 <p class="note">Lower AIC/BIC/SABIC indicate better fit (best BIC among K ≥ 2 is highlighted). BLRT p tests K profiles against K-1 (p < .05 favors K). Entropy and AvePP > .80 indicate good classification. Very small classes are flagged. The LMR-LRT is <b>not</b> computed in this browser version; use BLRT, or the R version if you need LMR.</p>
+
 <div class="chart" id="icPlot"></div><div class="legend" id="icLegend"></div>
+
 <button class="btn alt" id="dlFit">Download fit table (CSV)</button></div>
+
 <div class="two">
+
 <div class="panel"><h2>Class counts & proportions</h2><div class="tw" id="countTable"></div></div>
+
 <div class="panel"><h2>Average latent class probabilities</h2><div class="tw" id="probTable"></div><p class="note">Rows: most likely assigned profile; columns: mean posterior probability. Diagonal > 0.80 indicates strong separation.</p></div>
+
 </div>
+
 <div class="panel"><h2>Profile means (raw scale) and SDs</h2><div class="tw" id="rawMeans"></div>
+
 <button class="btn alt" id="dlData">Download data with profile membership (CSV)</button></div>
+
 <div class="panel"><h2>Suggested methodological citation</h2><pre id="cite"></pre></div>
+
 </div>
+
 </div>
+
 </section>
+
+
 
 <!-- TAB 3 -->
+
 <section class="tab" id="t3">
+
 <div class="grid">
+
 <div class="side">
+
 <label class="f">Comparison variable</label><select id="demoVar"></select>
+
 <label class="f">Variable type / test</label>
+
 <select id="demoType"><option value="continuous">Continuous (t-test / ANOVA)</option><option value="categorical">Categorical (Chi-square)</option></select>
+
 <button class="btn" id="runDemo">Compare Groups</button>
+
 <p class="note">Run the LPA first (Tab 2).</p>
+
 </div>
+
 <div class="panel"><h2>Statistical test output</h2><pre id="demoOut">Run the LPA, then choose a variable.</pre></div>
+
 </div>
+
 </section>
+
+
 
 <!-- TAB 4 -->
+
 <section class="tab" id="t4">
+
 <div class="grid">
+
 <div class="side">
+
 <label class="f">Predictor variables</label>
+
 <div class="picker" id="regVars"><span class="note">Run the LPA first.</span></div>
+
 <label class="f">Reference profile</label><select id="regRef"></select>
+
 <div class="chk"><input type="checkbox" id="regScale" checked><label for="regScale">Standardize numeric predictors</label></div>
+
 <button class="btn" id="runReg">Run Multinomial Regression</button>
+
 <p class="note">Uses most-likely class membership; classification error is ignored. For publication consider BCH / R3STEP approaches.</p>
+
 </div>
+
 <div>
+
 <div class="panel"><h2>Model summary</h2><pre id="regOut">No model yet.</pre></div>
+
 <div class="panel"><h2>Coefficients & odds ratios</h2><div class="tw" id="regTable"></div></div>
+
 </div>
+
 </div>
+
 </section>
+
+
 
 <!-- TAB 5 -->
+
 <section class="tab" id="t5">
+
 <div class="grid">
+
 <div class="side">
+
 <label class="f">Time 1 indicators (at least 2)</label><div class="picker" id="t1Vars"><span class="note">Load data first.</span></div>
+
 <label class="f">Time 2 indicators (at least 2)</label><div class="picker" id="t2Vars"><span class="note">Load data first.</span></div>
+
 <label class="f">Profiles per time point (K)</label><input type="number" id="lptaK" value="3" min="2" max="6">
+
 <div class="chk"><input type="checkbox" id="lptaScale" checked><label for="lptaScale">Standardize within each time point</label></div>
+
 <button class="btn" id="runLpta">Run LPTA Transition Analysis</button>
+
 <div class="prog" id="lptaProg"></div>
+
 <p class="note">Profiles are estimated separately at each time point and ordered by size (largest = Profile 1). Labels at T1 and T2 do not necessarily represent the same substantive profile: inspect the plots.</p>
+
 </div>
+
 <div>
+
 <div class="panel"><h2>Profile transition matrix (Time 1 → Time 2)</h2><div class="tw" id="transTable"></div></div>
+
 <div class="two">
+
 <div class="panel"><h2>Time 1 profiles</h2><div class="chart" id="plot1"></div><div class="legend" id="leg1"></div></div>
+
 <div class="panel"><h2>Time 2 profiles</h2><div class="chart" id="plot2"></div><div class="legend" id="leg2"></div></div>
+
 </div>
+
 <div class="panel"><h2>Cross-time transition summary</h2><pre id="lptaOut">No analysis yet.</pre></div>
+
 </div>
+
 </div>
+
 </section>
+
 </main>
+
 <footer>SPPLab LPA Studio · client-side JavaScript · all computations run in your browser</footer>
+
 <div id="toast"></div>
 
+
+
 <script>
+
 "use strict";
+
 const $=id=>document.getElementById(id);
+
 const S={data:null,lpa:null,fin:null,lpta:null};
+
 const PAL=['#0f766e','#b45309','#4338ca','#be123c','#4d7c0f','#0e7490','#7e22ce','#a16207'];
+
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',4000)}
+
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&','<':'<','>':'>','"':'"'}[c]));
+
 const fx=(x,d=3)=>(x===null||x===undefined||!isFinite(x))?'—':Number(x).toFixed(d);
+
 const fp=p=>(p===null||!isFinite(p))?'—':(p<0.001?'< .001':p.toFixed(3));
+
 const tick=()=>new Promise(r=>setTimeout(r,0));
 
+
+
 /* ---------- navigation ---------- */
+
 $('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+
  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+
  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.id===b.dataset.t));});
 
+
+
 /* ---------- math utilities ---------- */
+
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+
 const sd=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1))};
+
 function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
 function randn(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r())}
+
 function lgamma(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(let j=0;j<6;j++)s+=c[j]/++y;return -t+Math.log(2.5066282746310005*s/x)}
+
 function betacf(a,b,x){const FP=1e-300;const qab=a+b,qap=a+1,qam=a-1;let c=1,d=1-qab*x/qap;if(Math.abs(d)<FP)d=FP;d=1/d;let h=d;
+
  for(let m=1;m<=300;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;h*=d*c;
+
  aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<3e-14)break}return h}
+
 function ibeta(x,a,b){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+
  return x<(a+1)/(a+b+2)?bt*betacf(a,b,x)/a:1-bt*betacf(b,a,1-x)/b}
+
 function gammq(a,x){if(x<=0)return 1;
+
  if(x<a+1){let ap=a,sum=1/a,del=sum;for(let n=0;n<500;n++){ap++;del*=x/ap;sum+=del;if(Math.abs(del)<Math.abs(sum)*1e-15)break}return Math.max(0,1-sum*Math.exp(-x+a*Math.log(x)-lgamma(a)))}
+
  const FP=1e-300;let b=x+1-a,c=1/FP,d=1/b,h=d;for(let i=1;i<500;i++){const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<FP)d=FP;c=b+an/c;if(Math.abs(c)<FP)c=FP;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<1e-15)break}
+
  return Math.exp(-x+a*Math.log(x)-lgamma(a))*h}
+
 const pT2=(t,df)=>ibeta(df/(df+t*t),df/2,0.5);
+
 const pF=(f,d1,d2)=>f<=0?1:ibeta(d2/(d2+d1*f),d2/2,d1/2);
+
 const pChi=(x,df)=>gammq(df/2,x/2);
+
 const pZ2=z=>gammq(0.5,z*z/2);
 
+
+
 /* matrix helpers */
+
 function solveInv(A){const n=A.length;const M=A.map((r,i)=>[...r,...Array.from({length:n},(_,j)=>i===j?1:0)]);
+
  for(let i=0;i<n;i++){let p=i;for(let r=i+1;r<n;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;
+
   if(Math.abs(M[p][i])<1e-14)return null;[M[i],M[p]]=[M[p],M[i]];const d=M[i][i];for(let c=0;c<2*n;c++)M[i][c]/=d;
+
   for(let r=0;r<n;r++)if(r!==i){const f=M[r][i];if(f!==0)for(let c=0;c<2*n;c++)M[r][c]-=f*M[i][c]}}
+
  return M.map(r=>r.slice(n))}
 
+
+
 /* ---------- data import ---------- */
+
 function safeNum(v){if(typeof v==='number')return v;if(v===null||v===undefined)return NaN;const s=String(v).trim().replace(',','.');if(s==='')return NaN;const x=Number(s);return isFinite(x)?x:NaN}
+
 function parseCSV(text){text=text.replace(/^\uFEFF/,'');const first=text.split(/\r?\n/)[0];
+
  const sep=first.includes(';')?';':first.includes('\t')?'\t':',';const rows=[];let row=[],cur='',q=false;
+
  for(let i=0;i<text.length;i++){const ch=text[i];
+
   if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}
+
   else if(ch==='"')q=true;else if(ch===sep){row.push(cur);cur=''}
+
   else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);cur='';rows.push(row);row=[]}
+
   else cur+=ch}
+
  if(cur!==''||row.length){row.push(cur);rows.push(row)}
+
  return rows.filter(r=>r.some(c=>String(c).trim()!==''))}
+
 function setData(rows){
+
  const names=rows[0].map((h,i)=>String(h).trim()||('V'+(i+1)));const seen={};
+
  const nm=names.map(n=>{seen[n]=(seen[n]||0)+1;return seen[n]>1?n+'_'+seen[n]:n});
+
  const body=rows.slice(1);const cols={};nm.forEach((n,j)=>cols[n]=body.map(r=>r[j]===undefined?'':r[j]));
+
  const num=nm.filter(n=>{const ne=cols[n].filter(v=>String(v).trim()!=='');if(!ne.length)return false;
+
   const ok=ne.filter(v=>!isNaN(safeNum(v))).length;return ok/ne.length>0.9});
+
  S.data={names:nm,cols,n:body.length,num};S.lpa=null;S.fin=null;S.lpta=null;
+
  $('dataInfo').textContent='Rows: '+body.length+'   Columns: '+nm.length+'\nNumeric columns: '+num.length;
+
  let h='<table><tr>'+nm.map(n=>'<th>'+esc(n)+'</th>').join('')+'</tr>';
+
  body.slice(0,50).forEach(r=>{h+='<tr>'+nm.map((n,j)=>'<td>'+esc(r[j])+'</td>').join('')+'</tr>'});$('preview').innerHTML=h+'</table>';
+
  picker('lpaVars',num);picker('t1Vars',num);picker('t2Vars',num);
+
  $('regVars').innerHTML='<span class="note">Run the LPA first.</span>';
+
  toast('Data loaded: '+body.length+' rows, '+nm.length+' columns.')}
+
 function picker(id,items){$(id).innerHTML=items.map(n=>'<label><input type="checkbox" value="'+esc(n)+'">'+esc(n)+'</label>').join('')||'<span class="note">No numeric columns found.</span>'}
+
 const picked=id=>[...$(id).querySelectorAll('input:checked')].map(x=>x.value);
+
 $('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const ext=f.name.split('.').pop().toLowerCase();
+
  try{if(ext==='csv'||ext==='txt'){setData(parseCSV(await f.text()))}
+
   else if(ext==='xlsx'||ext==='xls'){if(typeof XLSX==='undefined'){toast('Excel reader failed to load; use CSV.');return}
+
    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+
    setData(XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).filter(r=>r.some(c=>String(c).trim()!=='')))}
+
   else toast('Unsupported format. Use CSV or Excel (.sav must be exported first).')}
+
  catch(err){toast('File reading error: '+err.message)}});
+
 $('demoBtn').addEventListener('click',()=>{const r=rng(7),rows=[['ID','Speed','Accuracy','Focus','Stress','Motivation','Gender','Age','Level']];
+
  const cen=[[1,1,0.6,-0.8,0.8],[-1,-0.6,-0.7,0.9,-0.6],[0.1,0.9,1,-0.2,0.2]];const pr=[0.45,0.30,0.25];
+
  for(let i=0;i<300;i++){const u=r();const k=u<pr[0]?0:u<pr[0]+pr[1]?1:2;
+
   const v=cen[k].map(c=>(50+10*(c+0.6*randn(r))).toFixed(1));
+
   const g=r()<(k===1?0.7:0.4)?'F':'M';rows.push([i+1,...v,g,Math.round(18+r()*10+(k===0?2:0)),['Elite','Amateur'][r()<0.35+0.2*(k===2)?0:1]])}
+
  setData(rows)});
 
+
+
 /* ---------- Gaussian mixture, EEI (equal variances, zero covariance) ---------- */
+
 function kmeansLabels(X,K,r){const n=X.length,p=X[0].length;
+
  let C=[X[Math.floor(r()*n)].slice()];
+
  while(C.length<K){const d=X.map(x=>Math.min(...C.map(c=>x.reduce((s,v,j)=>s+(v-c[j])**2,0))));const tot=d.reduce((a,b)=>a+b,0);
+
   let u=r()*tot,i=0;for(;i<n-1;i++){u-=d[i];if(u<=0)break}C.push(X[i].slice())}
+
  let lab=new Array(n).fill(0);
+
  for(let it=0;it<15;it++){let ch=false;
+
   for(let i=0;i<n;i++){let b=0,bd=Infinity;for(let k=0;k<K;k++){let s=0;for(let j=0;j<p;j++)s+=(X[i][j]-C[k][j])**2;if(s<bd){bd=s;b=k}}if(lab[i]!==b){lab[i]=b;ch=true}}
+
   C=C.map((c,k)=>{const m=new Array(p).fill(0);let cnt=0;for(let i=0;i<n;i++)if(lab[i]===k){cnt++;for(let j=0;j<p;j++)m[j]+=X[i][j]}return cnt?m.map(v=>v/cnt):c});
+
   if(!ch)break}
+
  return lab}
+
 function emRun(X,K,z,maxit=500){
+
  const n=X.length,p=X[0].length;const vtot=Array.from({length:p},(_,j)=>{const c=X.map(x=>x[j]);const m=mean(c);return c.reduce((s,v)=>s+(v-m)**2,0)/n});
+
  let pi=new Array(K),mu=Array.from({length:K},()=>new Array(p).fill(0)),s2=new Array(p).fill(1),ll=-Infinity,old=-Infinity;
+
  for(let it=0;it<maxit;it++){
+
   const nk=new Array(K).fill(0);for(let i=0;i<n;i++)for(let k=0;k<K;k++)nk[k]+=z[i][k];
+
   if(nk.some(v=>v<1e-3*n/K&&v<2))return null;
+
   for(let k=0;k<K;k++){pi[k]=nk[k]/n;for(let j=0;j<p;j++){let s=0;for(let i=0;i<n;i++)s+=z[i][k]*X[i][j];mu[k][j]=s/nk[k]}}
+
   for(let j=0;j<p;j++){let s=0;for(let i=0;i<n;i++)for(let k=0;k<K;k++)s+=z[i][k]*(X[i][j]-mu[k][j])**2;s2[j]=Math.max(s/n,1e-6*vtot[j]+1e-12)}
+
   const base=-0.5*(p*Math.log(2*Math.PI)+s2.reduce((a,v)=>a+Math.log(v),0));ll=0;
+
   for(let i=0;i<n;i++){const lp=new Array(K);let mx=-Infinity;
+
    for(let k=0;k<K;k++){let q=0;for(let j=0;j<p;j++)q+=(X[i][j]-mu[k][j])**2/s2[j];lp[k]=Math.log(pi[k])+base-0.5*q;if(lp[k]>mx)mx=lp[k]}
+
    let sm=0;for(let k=0;k<K;k++)sm+=Math.exp(lp[k]-mx);const lse=mx+Math.log(sm);ll+=lse;
+
    for(let k=0;k<K;k++)z[i][k]=Math.exp(lp[k]-lse)}
+
   if(!isFinite(ll))return null;
+
   if(Math.abs(ll-old)<1e-8*(Math.abs(ll)+1e-10)&&it>3)break;old=ll}
+
  return{K,ll,pi:pi.slice(),mu:mu.map(m=>m.slice()),s2:s2.slice(),z,df:(K-1)+K*p+p}}
+
 function fitBest(X,K,r,nstart){const n=X.length;let best=null;
+
  for(let s=0;s<nstart;s++){
+
   const lab=K===1?new Array(n).fill(0):(s%2===0?kmeansLabels(X,K,r):Array.from({length:n},()=>Math.floor(r()*K)));
+
   const z=lab.map(l=>{const a=new Array(K).fill(K===1?0:1e-4);a[l]=1;const t=a.reduce((x,y)=>x+y,0);return a.map(v=>v/t)});
+
   const m=emRun(X,K,z);if(m&&(!best||m.ll>best.ll))best=m;if(K===1&&best)break}
+
  return best}
+
 function classify(m){const K=m.K,n=m.z.length;const cl0=m.z.map(row=>row.indexOf(Math.max(...row)));
+
  const cnt=new Array(K).fill(0);cl0.forEach(c=>cnt[c]++);const ord=[...Array(K).keys()].sort((a,b)=>cnt[b]-cnt[a]);
+
  const inv=new Array(K);ord.forEach((o,i)=>inv[o]=i);
+
  return{z:m.z.map(row=>ord.map(o=>row[o])),cl:cl0.map(c=>inv[c]),k:K}}
+
 function avgPP(z,cl,K){return Array.from({length:K},(_,j)=>{const idx=[];cl.forEach((c,i)=>{if(c===j)idx.push(i)});
+
  return Array.from({length:K},(_,k)=>idx.length?idx.reduce((s,i)=>s+z[i][k],0)/idx.length:NaN)})}
+
 function entropyRel(z,K){if(K<2)return NaN;let s=0;z.forEach(r=>r.forEach(v=>{const w=Math.max(v,1e-12);s+=-w*Math.log(w)}));return 1-s/(z.length*Math.log(K))}
+
 function simulate(m,n,r){const p=m.mu[0].length;const X=[];
+
  for(let i=0;i<n;i++){let u=r(),k=0,c=m.pi[0];while(u>c&&k<m.K-1){k++;c+=m.pi[k]}X.push(m.mu[k].map((mm,j)=>mm+Math.sqrt(m.s2[j])*randn(r)))}return X}
 
+
+
 async function buildFit(models,X,doBlrt,nboot,r,prog){
+
  const n=X.length,K=models.length;const blrt=new Array(K).fill(NaN);
+
  if(doBlrt){for(let k=2;k<=K;k++){
+
    const m0=models[k-2],m1=models[k-1];if(!m0||!m1)continue;const obs=2*(m1.ll-m0.ll);let ge=0,valid=0;
+
    for(let b=0;b<nboot;b++){const Xb=simulate(m0,n,r);const f0=fitBest(Xb,k-1,r,5),f1=fitBest(Xb,k,r,20);
+
     if(f0&&f1){valid++;if(2*(f1.ll-f0.ll)>=obs)ge++}
+
     if(b%2===0){prog('BLRT '+(k-1)+' vs '+k+' profiles: '+(b+1)+'/'+nboot);await tick()}}
+
    blrt[k-1]=valid?(ge+1)/(valid+1):NaN}}
+
  const rows=models.map((m,i)=>{const k=i+1;if(!m)return{Profiles:k};const cc=classify(m);
+
   const cnt=Array.from({length:k},(_,j)=>cc.cl.filter(c=>c===j).length);const pp=avgPP(cc.z,cc.cl,k);
+
   const minPP=k>=2?Math.min(...pp.map((r,j)=>r[j]).filter(v=>isFinite(v))):NaN;
+
   return{Profiles:k,LogLik:m.ll,Npar:m.df,AIC:-2*m.ll+2*m.df,BIC:-2*m.ll+m.df*Math.log(n),SABIC:-2*m.ll+m.df*Math.log((n+2)/24),
+
    Entropy:entropyRel(cc.z,k),'BLRT p':blrt[i],'Min Class Prop':Math.min(...cnt)/n,'Max Class Prop':Math.max(...cnt)/n,'Min n':Math.min(...cnt),'Min AvePP':minPP,
+
    Flag:(Math.min(...cnt)/n<0.05||Math.min(...cnt)<20)?'Very small class':''}});
+
  return rows}
 
+
+
 /* ---------- table / chart helpers ---------- */
+
 function tableHtml(head,rows,numFrom=1,hl=-1){return '<table><tr>'+head.map((h,i)=>'<th class="'+(i>=numFrom?'n':'')+'">'+esc(h)+'</th>').join('')+'</tr>'+
+
  rows.map((r,ri)=>'<tr class="'+(ri===hl?'best':'')+'">'+r.map((c,i)=>'<td class="'+(i>=numFrom?'n':'')+'">'+(typeof c==='string'?esc(c):c)+'</td>').join('')+'</tr>').join('')+'</table>'}
 
 function lineChart(el,legendEl,cats,series,ylab){
- const W=680, H=400, L=58, R=20, T=20, B=cats.some(c=>String(c).length>6)?120:50;
+
+ const W=680,H=360,L=58,R=16,T=14,B=cats.some(c=>String(c).length>6)?92:48;
+
  let lo=Infinity,hi=-Infinity;series.forEach(s=>s.vals.forEach((v,i)=>{const e=s.ses?s.ses[i]:0;if(isFinite(v)){lo=Math.min(lo,v-e);hi=Math.max(hi,v+e)}}));
+
  if(!isFinite(lo)){lo=0;hi=1}if(lo===hi){lo-=1;hi+=1}const pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
+
  const x=i=>L+(cats.length===1?(W-L-R)/2:i*(W-L-R)/(cats.length-1)),y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
-  
- let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="100%" style="overflow:visible" role="img" font-family="IBM Plex Sans" font-size="11">';
+
+ let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" font-family="IBM Plex Sans" font-size="11">';
+
  for(let t=0;t<=5;t++){const v=lo+(hi-lo)*t/5;s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#e1e6e5"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end" fill="#5b6b69">'+(Math.abs(hi)>1000?v.toFixed(0):v.toFixed(2))+'</text>'}
+
  if(lo<0&&hi>0)s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#9aa8a6" stroke-dasharray="4 3"/>';
-  
- cats.forEach((c,i)=>{
-   const lbl=String(c);
-   if(lbl.length>6){
-     s+='<text transform="translate('+x(i)+','+(H-B+18)+') rotate(30)" text-anchor="start" fill="#14201f">'+esc(lbl.length>22?lbl.slice(0,21)+'…':lbl)+'</text>';
-   } else {
-     s+='<text x="'+x(i)+'" y="'+(H-B+20)+'" text-anchor="middle" fill="#14201f">'+esc(lbl)+'</text>';
-   }
- });
+
+ cats.forEach((c,i)=>{const lbl=String(c);if(lbl.length>6)s+='<text transform="translate('+x(i)+','+(H-B+14)+') rotate(35)" fill="#14201f">'+esc(lbl.length>18?lbl.slice(0,17)+'…':lbl)+'</text>';
+
+  else s+='<text x="'+x(i)+'" y="'+(H-B+18)+'" text-anchor="middle" fill="#14201f">'+esc(lbl)+'</text>'});
+
  s+='<text transform="translate(14,'+(T+(H-T-B)/2)+') rotate(-90)" text-anchor="middle" fill="#5b6b69">'+esc(ylab)+'</text>';
+
  series.forEach((se,si)=>{const col=PAL[si%PAL.length];
+
   s+='<polyline fill="none" stroke="'+col+'" stroke-width="2.2" points="'+se.vals.map((v,i)=>isFinite(v)?x(i)+','+y(v):'').filter(Boolean).join(' ')+'"/>';
+
   se.vals.forEach((v,i)=>{if(!isFinite(v))return;if(se.ses&&isFinite(se.ses[i])){const e=se.ses[i];s+='<line x1="'+x(i)+'" x2="'+x(i)+'" y1="'+y(v-e)+'" y2="'+y(v+e)+'" stroke="'+col+'"/><line x1="'+(x(i)-4)+'" x2="'+(x(i)+4)+'" y1="'+y(v-e)+'" y2="'+y(v-e)+'" stroke="'+col+'"/><line x1="'+(x(i)-4)+'" x2="'+(x(i)+4)+'" y1="'+y(v+e)+'" y2="'+y(v+e)+'" stroke="'+col+'"/>'}
-    s+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4" fill="'+col+'"/>'})});
+
+   s+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4" fill="'+col+'"/>'})});
+
  $(el).innerHTML=s+'</svg>';
- $(legendEl).innerHTML=series.map((se,i)=>'<span><i style="background:'+PAL[i%PAL.length]+'"></i>'+esc(se.name)+'</span>').join('')
-}
+
+ $(legendEl).innerHTML=series.map((se,i)=>'<span><i style="background:'+PAL[i%PAL.length]+'"></i>'+esc(se.name)+'</span>').join('')}
 
 function profileSeries(X,vars,cl,K){return Array.from({length:K},(_,k)=>{const idx=[];cl.forEach((c,i)=>{if(c===k)idx.push(i)});
+
  const vals=vars.map((_,j)=>mean(idx.map(i=>X[i][j])));const ses=vars.map((_,j)=>sd(idx.map(i=>X[i][j]))/Math.sqrt(idx.length));
+
  return{name:'Profile '+(k+1)+' (n='+idx.length+')',vals,ses}})}
+
 function dlCSV(name,head,rows){const q=v=>{const s=String(v===undefined||v===null?'':v);return /[",\n;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+
  const blob=new Blob(['\uFEFF'+[head,...rows].map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'});
+
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
 
+
+
 /* ---------- LPA ---------- */
+
 function zscore(X0){const p=X0[0].length;const ms=[],ss=[];for(let j=0;j<p;j++){const c=X0.map(r=>r[j]);ms.push(mean(c));ss.push(sd(c))}return X0.map(r=>r.map((v,j)=>(v-ms[j])/ss[j]))}
+
 function completeRows(vars){const D=S.data;const idx=[],X0=[];
+
  for(let i=0;i<D.n;i++){const row=vars.map(v=>safeNum(D.cols[v][i]));if(row.every(isFinite)){idx.push(i);X0.push(row)}}return{idx,X0}}
+
 $('runLpa').addEventListener('click',async()=>{
+
  if(!S.data){toast('Load data first.');return}
+
  const vars=picked('lpaVars'),K=parseInt($('maxK').value);
+
  if(vars.length<2){toast('Select at least 2 indicator variables.');return}
+
  if(!(K>=2&&K<=8)){toast('Maximum K must be between 2 and 8.');return}
+
  const{idx,X0}=completeRows(vars);if(idx.length<30){toast('Fewer than 30 complete cases; LPA is not reliable.');return}
+
  if(vars.some((_,j)=>sd(X0.map(r=>r[j]))===0)){toast('At least one indicator has zero variance.');return}
+
  const btn=$('runLpa');btn.disabled=true;const prog=m=>$('lpaProg').textContent=m;
+
  try{const scaled=$('scaleVars').checked;const X=scaled?zscore(X0):X0;const r=rng(parseInt($('seed').value)||123);const models=[];
+
   for(let k=1;k<=K;k++){prog('Fitting '+k+'-profile model...');await tick();models.push(fitBest(X,k,r,k<=2?20:100))}
+
   const fit=await buildFit(models,X,$('runBlrt').checked,Math.max(19,parseInt($('nboot').value)||50),r,prog);
+
   S.lpa={models,X,X0,vars,idx,scaled,fit,nTotal:S.data.n};
+
   const cand=fit.filter(f=>f.Profiles>=2&&isFinite(f.BIC));
+
   if(!cand.length){toast('No model with 2+ profiles converged.');prog('');btn.disabled=false;return}
+
   const best=cand.reduce((a,b)=>b.BIC<a.BIC?b:a);
+
   $('selK').innerHTML=cand.map(f=>'<option value="'+f.Profiles+'"'+(f.Profiles===best.Profiles?' selected':'')+'>'+f.Profiles+' profiles</option>').join('');
+
   prog('Done. n used = '+idx.length+' of '+S.data.n+'.');renderLPA();toast('LPA finished.')}
+
  catch(e){console.error(e);toast('Error: '+e.message);prog('')}
+
  btn.disabled=false});
+
 $('selK').addEventListener('change',()=>{if(S.lpa)renderLPA()});
 
+
+
 function getFinal(){const L=S.lpa;if(!L)return null;const k=parseInt($('selK').value);const m=L.models[k-1];if(!m)return null;
+
  const cc=classify(m);const cols={};S.data.names.forEach(n=>cols[n]=L.idx.map(i=>S.data.cols[n][i]));
+
  cols.LPA_Class=cc.cl.map(c=>String(c+1));return{k,model:m,cc,cols,names:[...S.data.names,'LPA_Class'],n:L.idx.length}}
+
 function renderLPA(){const L=S.lpa,F=getFinal();S.fin=F;if(!F)return;
+
  const ft=L.fit;const cand=ft.filter(f=>f.Profiles>=2&&isFinite(f.BIC));const bestK=cand.reduce((a,b)=>b.BIC<a.BIC?b:a).Profiles;
+
  const head=['Profiles','LogLik','Npar','AIC','BIC','SABIC','Entropy','BLRT p','Min Class Prop','Max Class Prop','Min n','Min AvePP','Flag'];
+
  $('fitTable').innerHTML=tableHtml(head,ft.map(f=>[String(f.Profiles),fx(f.LogLik,2),fx(f.Npar,0),fx(f.AIC,2),fx(f.BIC,2),fx(f.SABIC,2),fx(f.Entropy),fp(f['BLRT p']),fx(f['Min Class Prop']),fx(f['Max Class Prop']),fx(f['Min n'],0),fx(f['Min AvePP']),f.Flag||'']),1,ft.findIndex(f=>f.Profiles===bestK));
+
  lineChart('icPlot','icLegend',ft.map(f=>f.Profiles+' profile'+(f.Profiles>1?'s':'')),['AIC','BIC','SABIC'].map(k=>({name:k,vals:ft.map(f=>f[k])})),'Information criterion');
+
  lineChart('lpaPlot','lpaLegend',L.vars,profileSeries(L.X,L.vars,F.cc.cl,F.k),L.scaled?'Z-score mean':'Raw mean');
+
  const cnt=Array.from({length:F.k},(_,j)=>F.cc.cl.filter(c=>c===j).length);
+
  $('countTable').innerHTML=tableHtml(['Profile','Count (n)','Proportion (%)'],cnt.map((c,j)=>['Profile '+(j+1),String(c),(100*c/F.n).toFixed(2)]));
+
  const M=avgPP(F.cc.z,F.cc.cl,F.k);
+
  $('probTable').innerHTML=tableHtml(['Assigned profile',...M.map((_,j)=>'P(Profile '+(j+1)+')')],M.map((r,j)=>['Profile '+(j+1),...r.map(v=>fx(v))]));
+
  const rr=[];L.vars.forEach((v,j)=>{for(let k=0;k<F.k;k++){const x=[];F.cc.cl.forEach((c,i)=>{if(c===k)x.push(L.X0[i][j])});rr.push([v,'Profile '+(k+1),String(x.length),fx(mean(x)),fx(sd(x))])}});
+
  $('rawMeans').innerHTML=tableHtml(['Variable','Profile','n','Mean','SD'],rr,2);
+
  $('cite').textContent=
+
 "--- IN-TEXT METHODOLOGY STATEMENT ---\nLatent Profile Analysis (LPA) was conducted using LPA Studio (Senel, 2026), an open-source web application developed by the Sport and Performance Psychology Lab (SPPLab). Gaussian finite mixture models with equal indicator variances across profiles and covariances constrained to zero (Model 1; equivalent to the mclust 'EEI' parameterization; Scrucca et al., 2016) were estimated with the expectation-maximization algorithm using 10 k-means-based random starts per solution"+(L.scaled?", after z-standardizing the indicators":"")+". Solutions with 1 to "+ft.length+" profiles were compared using AIC, BIC, SABIC, relative entropy, the bootstrap likelihood ratio test (BLRT), average posterior probabilities, and the size and interpretability of the profiles (Nylund et al., 2007). "+F.k+" profiles were retained. Analyses were based on "+F.n+" complete cases.\n\n--- SUGGESTED REFERENCES (APA 7) ---\nSenel, E. (2026). LPA Studio: Open source web application for Latent Profile Analysis [Computer software]. Sport and Performance Psychology Lab (SPPLab).\nNylund, K. L., Asparouhov, T., & Muthen, B. O. (2007). Deciding on the number of classes in latent class analysis and growth mixture modeling. Structural Equation Modeling, 14(4), 535-569.\nScrucca, L., Fop, M., Murphy, T. B., & Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. The R Journal, 8(1), 289-317.";
+
  // dependent tabs
+
  const opts=S.data.names.map(n=>'<option>'+esc(n)+'</option>').join('');$('demoVar').innerHTML=opts;
+
  picker('regVars',S.data.names);
+
  $('regRef').innerHTML=Array.from({length:F.k},(_,j)=>'<option value="'+(j+1)+'">Profile '+(j+1)+'</option>').join('')}
+
 $('dlFit').addEventListener('click',()=>{if(!S.lpa)return;const h=['Profiles','LogLik','Npar','AIC','BIC','SABIC','Entropy','BLRT p','Min Class Prop','Max Class Prop','Min n','Min AvePP','Flag'];dlCSV('lpa_fit_table.csv',h,S.lpa.fit.map(f=>h.map(k=>f[k])))});
+
 $('dlData').addEventListener('click',()=>{const F=S.fin;if(!F)return;
+
  const h=[...F.names,...Array.from({length:F.k},(_,j)=>'Prob_Profile'+(j+1))];
+
  dlCSV('lpa_data_with_profiles.csv',h,Array.from({length:F.n},(_,i)=>[...F.names.map(n=>F.cols[n][i]),...F.cc.z[i].map(v=>v.toFixed(4))]))});
 
+
+
 /* ---------- Group comparisons ---------- */
+
 function crosstabStats(cnt){const R=cnt.length,C=cnt[0].length,rs=cnt.map(r=>r.reduce((a,b)=>a+b,0)),cs=cnt[0].map((_,j)=>cnt.reduce((a,r)=>a+r[j],0)),n=rs.reduce((a,b)=>a+b,0);
+
  let chi=0,minE=Infinity;const sres=[];
+
  for(let i=0;i<R;i++){sres.push([]);for(let j=0;j<C;j++){const e=rs[i]*cs[j]/n;minE=Math.min(minE,e);if(e>0)chi+=(cnt[i][j]-e)**2/e;
+
   sres[i].push(e>0?(cnt[i][j]-e)/Math.sqrt(e*(1-rs[i]/n)*(1-cs[j]/n)):NaN)}}
+
  const df=(R-1)*(C-1);return{chi,df,p:pChi(chi,df),V:Math.sqrt(chi/(n*(Math.min(R,C)-1))),minE,sres,n,rs,cs}}
+
 $('runDemo').addEventListener('click',()=>{const F=S.fin;if(!F){toast('Run the LPA first.');return}
+
  const v=$('demoVar').value,out=[];const grp=F.cols.LPA_Class,lv=[...new Set(grp)].sort();
+
  if($('demoType').value==='continuous'){
+
   const g=lv.map(l=>{const y=[];grp.forEach((c,i)=>{if(c===l){const x=safeNum(F.cols[v][i]);if(isFinite(x))y.push(x)}});return y});
+
   if(g.some(a=>a.length<2)){$('demoOut').textContent='Variable is not numeric or a profile has fewer than 2 valid values.';return}
+
   out.push('=== DESCRIPTIVES BY PROFILE ===');lv.forEach((l,i)=>out.push('Profile '+l+':  n = '+g[i].length+'  Mean = '+mean(g[i]).toFixed(3)+'  SD = '+sd(g[i]).toFixed(3)));
+
   if(lv.length===2){const[a,b]=g,va=sd(a)**2/a.length,vb=sd(b)**2/b.length,t=(mean(a)-mean(b))/Math.sqrt(va+vb),df=(va+vb)**2/(va**2/(a.length-1)+vb**2/(b.length-1));
+
    out.push('','=== WELCH t-TEST ===','t = '+t.toFixed(3)+', df = '+df.toFixed(2)+', p = '+fp(pT2(t,df)));
+
    const sp=Math.sqrt(((a.length-1)*sd(a)**2+(b.length-1)*sd(b)**2)/(a.length+b.length-2));out.push("Cohen's d = "+((mean(a)-mean(b))/sp).toFixed(3))}
+
   else{const all=g.flat(),N=all.length,k=g.length,gm=mean(all);
+
    const ssb=g.reduce((s,a)=>s+a.length*(mean(a)-gm)**2,0),ssw=g.reduce((s,a)=>s+a.reduce((q,x)=>q+(x-mean(a))**2,0),0),dfb=k-1,dfw=N-k,F1=(ssb/dfb)/(ssw/dfw);
+
    out.push('','=== ONE-WAY ANOVA ===','F('+dfb+', '+dfw+') = '+F1.toFixed(3)+', p = '+fp(pF(F1,dfb,dfw)),'Eta squared = '+(ssb/(ssb+ssw)).toFixed(3));
+
    const w=g.map(a=>a.length/sd(a)**2),W=w.reduce((a,b)=>a+b,0),mt=g.reduce((s,a,i)=>s+w[i]*mean(a),0)/W;
+
    const A=g.reduce((s,a,i)=>s+w[i]*(mean(a)-mt)**2,0)/(k-1),tt=g.reduce((s,a,i)=>s+(1-w[i]/W)**2/(a.length-1),0),B=1+2*(k-2)/(k*k-1)*tt,Fw=A/B,df2=(k*k-1)/(3*tt);
+
    out.push('','=== WELCH ANOVA (robust to unequal variances) ===','F('+dfb+', '+df2.toFixed(2)+') = '+Fw.toFixed(3)+', p = '+fp(pF(Fw,dfb,df2)));
+
    out.push('','=== POST-HOC: pairwise Welch t-tests, Bonferroni-adjusted ===');
+
    const m=k*(k-1)/2;for(let i=0;i<k;i++)for(let j=i+1;j<k;j++){const a=g[i],b=g[j],va=sd(a)**2/a.length,vb=sd(b)**2/b.length,t=(mean(a)-mean(b))/Math.sqrt(va+vb),df=(va+vb)**2/(va**2/(a.length-1)+vb**2/(b.length-1));
+
     const sp=Math.sqrt(((a.length-1)*sd(a)**2+(b.length-1)*sd(b)**2)/(a.length+b.length-2));
+
     out.push('Profile '+lv[i]+' vs '+lv[j]+':  diff = '+(mean(a)-mean(b)).toFixed(3)+',  t = '+t.toFixed(3)+',  adj. p = '+fp(Math.min(1,pT2(t,df)*m))+",  d = "+((mean(a)-mean(b))/sp).toFixed(2))}
+
    out.push('','Note: Tukey HSD is not implemented in the browser version; Bonferroni-adjusted Welch tests are reported instead.')}
+
  }else{
+
   const cats=[...new Set(F.cols[v].map(x=>String(x)))].filter(x=>x.trim()!=='').sort();
+
   if(cats.length<2||cats.length>30){$('demoOut').textContent='Variable needs 2-30 categories for a chi-square test (found '+cats.length+').';return}
+
   const cnt=cats.map(c=>lv.map(l=>grp.reduce((s,g,i)=>s+(g===l&&String(F.cols[v][i])===c?1:0),0)));
+
   const st=crosstabStats(cnt);
+
   out.push('=== CROSS-TABULATION (counts) ===','Category'.padEnd(16)+lv.map(l=>('P'+l).padStart(8)).join(''));
+
   cats.forEach((c,i)=>out.push(c.slice(0,15).padEnd(16)+cnt[i].map(x=>String(x).padStart(8)).join('')));
+
   out.push('','=== COLUMN PERCENTAGES (within profile) ===');
+
   cats.forEach((c,i)=>out.push(c.slice(0,15).padEnd(16)+cnt[i].map((x,j)=>(100*x/st.cs[j]).toFixed(1).padStart(8)).join('')));
+
   out.push('','=== CHI-SQUARE TEST OF INDEPENDENCE ===','X2('+st.df+', N = '+st.n+') = '+st.chi.toFixed(3)+', p = '+fp(st.p),"Cramer's V = "+st.V.toFixed(3));
+
   if(st.minE<5)out.push('Warning: some expected counts < 5; interpret the p-value with caution (consider merging categories).');
+
   out.push('','Standardized residuals (|value| > 1.96 notable):');cats.forEach((c,i)=>out.push(c.slice(0,15).padEnd(16)+st.sres[i].map(x=>fx(x,2).padStart(8)).join('')))}
+
  $('demoOut').textContent=out.join('\n')});
 
+
+
 /* ---------- Multinomial regression ---------- */
+
 function mnlogit(Xd,y,J){const n=Xd.length,q=Xd[0].length,m=(J-1)*q;let beta=new Array(m).fill(0),I=null,ll=0;
+
  for(let it=0;it<100;it++){const g=new Array(m).fill(0);I=Array.from({length:m},()=>new Array(m).fill(0));ll=0;
+
   for(let i=0;i<n;i++){const x=Xd[i],eta=[0];for(let j=1;j<J;j++){let s=0;for(let c=0;c<q;c++)s+=beta[(j-1)*q+c]*x[c];eta.push(s)}
+
    const mx=Math.max(...eta);const e=eta.map(v=>Math.exp(v-mx));const sm=e.reduce((a,b)=>a+b,0);const P=e.map(v=>v/sm);ll+=Math.log(P[y[i]]);
+
    for(let j=1;j<J;j++){const rj=(y[i]===j?1:0)-P[j];for(let a=0;a<q;a++){g[(j-1)*q+a]+=rj*x[a];
+
      for(let l=1;l<J;l++){const w=P[j]*((j===l?1:0)-P[l]);if(l>=j)for(let b=0;b<q;b++){I[(j-1)*q+a][(l-1)*q+b]+=w*x[a]*x[b]}}}}}
+
   for(let r=0;r<m;r++)for(let c=0;c<r;c++){} 
+
   // symmetrize (only l>=j was filled)
+
   for(let r=0;r<m;r++)for(let c=0;c<m;c++){if(I[r][c]===0&&I[c][r]!==0)I[r][c]=I[c][r]}
+
   for(let r=0;r<m;r++)I[r][r]+=1e-8;
+
   const inv=solveInv(I);if(!inv)return null;
+
   const step=inv.map(row=>row.reduce((s,v,c)=>s+v*g[c],0));let mxs=0;
+
   for(let r=0;r<m;r++){const st=Math.max(-5,Math.min(5,step[r]));beta[r]+=st;mxs=Math.max(mxs,Math.abs(st))}
+
   if(mxs<1e-8)break}
+
  const cov=solveInv(I);return{beta,cov,ll,q,J}}
+
 $('runReg').addEventListener('click',()=>{const F=S.fin;if(!F){toast('Run the LPA first.');return}
+
  const preds=picked('regVars').filter(p=>p!=='LPA_Class');if(!preds.length){toast('Select at least one predictor.');return}
+
  const ref=$('regRef').value,std=$('regScale').checked;const cols=[],names=['(Intercept)'];
+
  const keep=F.cols.LPA_Class.map((_,i)=>true);const colsV=[];
+
  preds.forEach(p=>{const raw=F.cols[p];const isNum=S.data.num.includes(p);
+
   if(isNum){const v=raw.map(safeNum);v.forEach((x,i)=>{if(!isFinite(x))keep[i]=false});colsV.push({name:p,type:'n',v})}
+
   else{raw.forEach((x,i)=>{if(String(x).trim()==='')keep[i]=false});const lv=[...new Set(raw.map(String))].filter(x=>x.trim()!=='').sort();
+
    if(lv.length<2||lv.length>12){toast('Predictor '+p+' has '+lv.length+' categories; skipped.');return}
+
    lv.slice(1).forEach(l=>colsV.push({name:p+'='+l,type:'d',v:raw.map(x=>String(x)===l?1:0)}))}});
+
  if(!colsV.length)return;
+
  const rows=[];keep.forEach((k,i)=>{if(k)rows.push(i)});
+
  const prep=colsV.map(c=>{let v=rows.map(i=>c.v[i]);if(c.type==='n'&&std){const m=mean(v),s=sd(v)||1;v=v.map(x=>(x-m)/s)}return{name:c.name,v}});
+
  const classes=[ref,...Array.from({length:F.k},(_,j)=>String(j+1)).filter(x=>x!==ref)];
+
  const y=rows.map(i=>classes.indexOf(F.cols.LPA_Class[i]));const Xd=rows.map((_,r)=>[1,...prep.map(c=>c.v[r])]);
+
  if(Xd.length<10*prep.length){$('regOut').textContent='Too few cases ('+Xd.length+') for '+prep.length+' predictor terms (need ≥ 10 per term).';return}
+
  const J=classes.length,res=mnlogit(Xd,y,J);if(!res){$('regOut').textContent='Model failed (singular information matrix; check collinearity).';return}
+
  const cnts=classes.map((_,j)=>y.filter(v=>v===j).length),n=Xd.length,ll0=cnts.reduce((s,c)=>s+(c>0?c*Math.log(c/n):0),0);
+
  const df=(J-1)*prep.length,lr=2*(res.ll-ll0),npar=(J-1)*(prep.length+1);
+
  $('regOut').textContent=['=== MULTINOMIAL LOGISTIC REGRESSION ===','Reference profile: '+ref+'  |  n = '+n,'',
+
   'Model LR chi-square: '+lr.toFixed(3)+'  |  df = '+df+'  |  p = '+fp(pChi(lr,df)),'McFadden pseudo-R2: '+(1-res.ll/ll0).toFixed(3),'AIC: '+(-2*res.ll+2*npar).toFixed(2),'',
+
   Math.max(...res.beta.map(Math.abs))>15?'Warning: very large coefficients suggest (quasi-)complete separation; interpret with caution.':'Coefficients, SE, z, p, odds ratios and 95% CI are in the table below.',
+
   'Intercept rows are included; interpret OR for predictors only.'].join('\n');
+
  const rowsT=[];const qn=['(Intercept)',...prep.map(c=>c.name)];
+
  for(let j=1;j<J;j++)for(let c=0;c<res.q;c++){const idx=(j-1)*res.q+c,b=res.beta[idx],se=Math.sqrt(Math.max(res.cov[idx][idx],0)),z=b/se;
+
   rowsT.push(['Profile '+classes[j]+' vs '+ref,qn[c],fx(b),fx(se),fx(z),fp(pZ2(z)),fx(Math.exp(b)),fx(Math.exp(b-1.96*se)),fx(Math.exp(b+1.96*se))])}
+
  $('regTable').innerHTML=tableHtml(['Comparison','Term','B','SE','z','p','OR','OR 95% LCI','OR 95% UCI'],rowsT,2);toast('Regression finished.')});
 
+
+
 /* ---------- LPTA ---------- */
+
 $('runLpta').addEventListener('click',async()=>{
+
  if(!S.data){toast('Load data first.');return}
+
  const v1=picked('t1Vars'),v2=picked('t2Vars'),K=parseInt($('lptaK').value);
+
  if(v1.length<2||v2.length<2){toast('Select at least 2 variables for each time point.');return}
+
  const all=[...new Set([...v1,...v2])];const{idx,X0}=completeRows(all);if(idx.length<30){toast('Fewer than 30 complete longitudinal cases.');return}
+
  const sub=(vs)=>X0.map(r=>vs.map(v=>r[all.indexOf(v)]));let A=sub(v1),B=sub(v2);
+
  if($('lptaScale').checked){A=zscore(A);B=zscore(B)}
+
  const btn=$('runLpta');btn.disabled=true;$('lptaProg').textContent='Fitting models...';await tick();
+
  try{const r=rng(123);const m1=fitBest(A,K,r,10),m2=fitBest(B,K,r,10);
+
   if(!m1||!m2){toast('A model failed to converge; try a smaller K.');btn.disabled=false;$('lptaProg').textContent='';return}
+
   const c1=classify(m1),c2=classify(m2);
+
   const cnt=Array.from({length:K},(_,i)=>Array.from({length:K},(_,j)=>c1.cl.reduce((s,c,t)=>s+(c===i&&c2.cl[t]===j?1:0),0)));
+
   const rs=cnt.map(r=>r.reduce((a,b)=>a+b,0));
+
   $('transTable').innerHTML=tableHtml(['Time 1 profile',...Array.from({length:K},(_,j)=>'T2 - Profile '+(j+1))],cnt.map((r,i)=>['T1 - Profile '+(i+1),...r.map(c=>c+' ('+(rs[i]?(100*c/rs[i]).toFixed(1):'0.0')+'%)')]));
+
   lineChart('plot1','leg1',v1,profileSeries(A,v1,c1.cl,K),$('lptaScale').checked?'Z-score mean':'Raw mean');
+
   lineChart('plot2','leg2',v2,profileSeries(B,v2,c2.cl,K),$('lptaScale').checked?'Z-score mean':'Raw mean');
+
   const n=idx.length,po=cnt.reduce((s,r,i)=>s+r[i],0)/n,cs=cnt[0].map((_,j)=>cnt.reduce((a,r)=>a+r[j],0)),pe=rs.reduce((s,v,i)=>s+v*cs[i],0)/n**2;
+
   const ok=rs.every(v=>v>0)&&cs.every(v=>v>0);const out=['=== LATENT PROFILE TRANSITION ANALYSIS (LPTA) SUMMARY ===','','Longitudinal complete cases (n): '+n,
-    'Relative entropy T1: '+fx(entropyRel(c1.z,K))+' | T2: '+fx(entropyRel(c2.z,K)),'','Row transition probabilities (%):'];
+
+   'Relative entropy T1: '+fx(entropyRel(c1.z,K))+' | T2: '+fx(entropyRel(c2.z,K)),'','Row transition probabilities (%):'];
+
   cnt.forEach((row,i)=>out.push('T1-P'+(i+1)+'  '+row.map(c=>(rs[i]?100*c/rs[i]:0).toFixed(1).padStart(7)).join('')));
+
   if(ok){const st=crosstabStats(cnt);out.push('','Chi-square test of association between T1 and T2 profiles:','X2('+st.df+') = '+st.chi.toFixed(3)+', p = '+fp(st.p),"Cramer's V = "+st.V.toFixed(3));if(st.minE<5)out.push('Warning: some expected counts < 5; interpret p with caution.')}
+
   out.push('','Stay rate if labels correspond (diagonal): '+(100*po).toFixed(1)+'%',"Cohen's kappa (diagonal agreement): "+((po-pe)/(1-pe)).toFixed(3),
-    'Note: diagonal-based indices assume Profile i at T1 is substantively the same as Profile i at T2. Verify with the plots.');
+
+   'Note: diagonal-based indices assume Profile i at T1 is substantively the same as Profile i at T2. Verify with the plots.');
+
   $('lptaOut').textContent=out.join('\n');$('lptaProg').textContent='Done.';toast('LPTA finished.')}
+
  catch(e){console.error(e);toast('Error: '+e.message)}
+
  btn.disabled=false});
+
 </script>
+
 </body>
-</html>
+
+</html> 
+
