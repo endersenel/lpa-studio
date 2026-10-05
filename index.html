@@ -46,8 +46,8 @@ td{padding:5px 9px;border-bottom:1px solid #e6ebea;white-space:nowrap;font-varia
 td.n,th.n{text-align:right}
 tr.best td{background:#e1f1ee;font-weight:600}
 pre{background:#fff;border:1px solid var(--line);padding:12px;font:12px/1.55 'IBM Plex Mono',monospace;overflow:auto;white-space:pre-wrap;margin:6px 0}
-.chart{background:#fff;border:1px solid var(--line);padding:12px 8px 18px;overflow:hidden}
-.chart svg{display:block;width:100%;height:auto;max-height:420px}
+.chart{background:#fff;border:1px solid var(--line);padding:12px 10px 20px;overflow:hidden}
+.chart svg{display:block;width:100%;height:auto;max-height:480px;overflow:visible}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;padding:4px 8px}
 .legend i{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-2px}
 .prog{font:12px 'IBM Plex Mono',monospace;color:var(--acc);margin-top:8px;min-height:18px}
@@ -325,22 +325,21 @@ async function buildFit(models,X,doBlrt,nboot,r,prog){
 function tableHtml(head,rows,numFrom=1,hl=-1){return '<table><tr>'+head.map((h,i)=>'<th class="'+(i>=numFrom?'n':'')+'">'+esc(h)+'</th>').join('')+'</tr>'+
  rows.map((r,ri)=>'<tr class="'+(ri===hl?'best':'')+'">'+r.map((c,i)=>'<td class="'+(i>=numFrom?'n':'')+'">'+(typeof c==='string'?esc(c):c)+'</td>').join('')+'</tr>').join('')+'</table>'}
 function lineChart(el,legendEl,cats,series,ylab){
- const maxLen=Math.max(...cats.map(c=>String(c).length));
- const B=maxLen>12?130:maxLen>6?100:48;
- const W=680,H=360+B-48,L=58,R=20,T=14;
+ const B=cats.some(c=>String(c).length>6)?120:50;
+ const W=680,H=380,L=58,R=20,T=14;
  let lo=Infinity,hi=-Infinity;series.forEach(s=>s.vals.forEach((v,i)=>{const e=s.ses?s.ses[i]:0;if(isFinite(v)){lo=Math.min(lo,v-e);hi=Math.max(hi,v+e)}}));
  if(!isFinite(lo)){lo=0;hi=1}if(lo===hi){lo-=1;hi+=1}const pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
  const x=i=>L+(cats.length===1?(W-L-R)/2:i*(W-L-R)/(cats.length-1)),y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="100%" style="overflow:visible" role="img" font-family="IBM Plex Sans" font-size="11">';
  for(let t=0;t<=5;t++){const v=lo+(hi-lo)*t/5;s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#e1e6e5"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end" fill="#5b6b69">'+(Math.abs(hi)>1000?v.toFixed(0):v.toFixed(2))+'</text>'}
  if(lo<0&&hi>0)s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#9aa8a6" stroke-dasharray="4 3"/>';
- cats.forEach((c,i)=>{const lbl=String(c);if(lbl.length>6)s+='<text transform="translate('+x(i)+','+(H-B+14)+') rotate(30)" text-anchor="start" fill="#14201f">'+esc(lbl.length>25?lbl.slice(0,24)+'…':lbl)+'</text>';
+ cats.forEach((c,i)=>{const lbl=String(c);if(lbl.length>6)s+='<text transform="translate('+x(i)+','+(H-B+14)+') rotate(30)" text-anchor="start" fill="#14201f">'+esc(lbl.length>22?lbl.slice(0,21)+'…':lbl)+'</text>';
   else s+='<text x="'+x(i)+'" y="'+(H-B+18)+'" text-anchor="middle" fill="#14201f">'+esc(lbl)+'</text>'});
  s+='<text transform="translate(14,'+(T+(H-T-B)/2)+') rotate(-90)" text-anchor="middle" fill="#5b6b69">'+esc(ylab)+'</text>';
  series.forEach((se,si)=>{const col=PAL[si%PAL.length];
   s+='<polyline fill="none" stroke="'+col+'" stroke-width="2.2" points="'+se.vals.map((v,i)=>isFinite(v)?x(i)+','+y(v):'').filter(Boolean).join(' ')+'"/>';
   se.vals.forEach((v,i)=>{if(!isFinite(v))return;if(se.ses&&isFinite(se.ses[i])){const e=se.ses[i];s+='<line x1="'+x(i)+'" x2="'+x(i)+'" y1="'+y(v-e)+'" y2="'+y(v+e)+'" stroke="'+col+'"/><line x1="'+(x(i)-4)+'" x2="'+(x(i)+4)+'" y1="'+y(v-e)+'" y2="'+y(v-e)+'" stroke="'+col+'"/><line x1="'+(x(i)-4)+'" x2="'+(x(i)+4)+'" y1="'+y(v+e)+'" y2="'+y(v+e)+'" stroke="'+col+'"/>'}
-    s+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4" fill="'+col+'"/>'})});
+   s+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4" fill="'+col+'"/>'})});
  $(el).innerHTML=s+'</svg>';
  $(legendEl).innerHTML=series.map((se,i)=>'<span><i style="background:'+PAL[i%PAL.length]+'"></i>'+esc(se.name)+'</span>').join('')}
 function profileSeries(X,vars,cl,K){return Array.from({length:K},(_,k)=>{const idx=[];cl.forEach((c,i)=>{if(c===k)idx.push(i)});
@@ -503,11 +502,11 @@ $('runLpta').addEventListener('click',async()=>{
   lineChart('plot2','leg2',v2,profileSeries(B,v2,c2.cl,K),$('lptaScale').checked?'Z-score mean':'Raw mean');
   const n=idx.length,po=cnt.reduce((s,r,i)=>s+r[i],0)/n,cs=cnt[0].map((_,j)=>cnt.reduce((a,r)=>a+r[j],0)),pe=rs.reduce((s,v,i)=>s+v*cs[i],0)/n**2;
   const ok=rs.every(v=>v>0)&&cs.every(v=>v>0);const out=['=== LATENT PROFILE TRANSITION ANALYSIS (LPTA) SUMMARY ===','','Longitudinal complete cases (n): '+n,
-    'Relative entropy T1: '+fx(entropyRel(c1.z,K))+' | T2: '+fx(entropyRel(c2.z,K)),'','Row transition probabilities (%):'];
+   'Relative entropy T1: '+fx(entropyRel(c1.z,K))+' | T2: '+fx(entropyRel(c2.z,K)),'','Row transition probabilities (%):'];
   cnt.forEach((row,i)=>out.push('T1-P'+(i+1)+'  '+row.map(c=>(rs[i]?100*c/rs[i]:0).toFixed(1).padStart(7)).join('')));
   if(ok){const st=crosstabStats(cnt);out.push('','Chi-square test of association between T1 and T2 profiles:','X2('+st.df+') = '+st.chi.toFixed(3)+', p = '+fp(st.p),"Cramer's V = "+st.V.toFixed(3));if(st.minE<5)out.push('Warning: some expected counts < 5; interpret p with caution.')}
   out.push('','Stay rate if labels correspond (diagonal): '+(100*po).toFixed(1)+'%',"Cohen's kappa (diagonal agreement): "+((po-pe)/(1-pe)).toFixed(3),
-    'Note: diagonal-based indices assume Profile i at T1 is substantively the same as Profile i at T2. Verify with the plots.');
+   'Note: diagonal-based indices assume Profile i at T1 is substantively the same as Profile i at T2. Verify with the plots.');
   $('lptaOut').textContent=out.join('\n');$('lptaProg').textContent='Done.';toast('LPTA finished.')}
  catch(e){console.error(e);toast('Error: '+e.message)}
  btn.disabled=false});
