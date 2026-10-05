@@ -48,7 +48,8 @@ td{padding:5px 9px;border-bottom:1px solid #e6ebea;white-space:nowrap;font-varia
 td.n,th.n{text-align:right}
 tr.best td{background:#e1f1ee;font-weight:600}
 pre{background:#fff;border:1px solid var(--line);padding:12px;font:12px/1.55 'IBM Plex Mono',monospace;overflow:auto;white-space:pre-wrap;margin:6px 0}
-.chart{background:#fff;border:1px solid var(--line);padding:8px}
+.chart{background:#fff;border:1px solid var(--line);padding:8px;width:100%;overflow:hidden}
+.chart svg{width:100%;height:auto;display:block}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;padding:4px 8px}
 .legend i{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-2px}
 .prog{font:12px 'IBM Plex Mono',monospace;color:var(--acc);margin-top:8px;min-height:18px}
@@ -451,7 +452,7 @@ function lineChart(el,legendEl,cats,series,ylab){
  let lo=Infinity,hi=-Infinity;series.forEach(s=>s.vals.forEach((v,i)=>{const e=s.ses?s.ses[i]:0;if(isFinite(v)){lo=Math.min(lo,v-e);hi=Math.max(hi,v+e)}}));
  if(!isFinite(lo)){lo=0;hi=1}if(lo===hi){lo-=1;hi+=1}const pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
  const x=i=>L+(cats.length===1?(W-L-R)/2:i*(W-L-R)/(cats.length-1)),y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
- let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" font-family="IBM Plex Sans" font-size="11">';
+ let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="auto" preserveAspectRatio="xMidYMid meet" role="img" font-family="IBM Plex Sans" font-size="11">';
  for(let t=0;t<=5;t++){const v=lo+(hi-lo)*t/5;s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#e1e6e5"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end" fill="#5b6b69">'+(Math.abs(hi)>1000?v.toFixed(0):v.toFixed(2))+'</text>'}
  if(lo<0&&hi>0)s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#9aa8a6" stroke-dasharray="4 3"/>';
  cats.forEach((c,i)=>{const lbl=String(c);if(lbl.length>6)s+='<text transform="translate('+x(i)+','+(H-B+14)+') rotate(35)" fill="#14201f">'+esc(lbl.length>18?lbl.slice(0,17)+'…':lbl)+'</text>';
@@ -487,8 +488,8 @@ function makeLog(o){const L=[];
  L.push('LMR-LRT: adjusted Lo-Mendell-Rubin formula as in tidyLPA::calc_lrt (not guaranteed identical to Mplus VLMR)');
  L.push('Compute: '+(o.nw?o.nw+' Web Workers':'main thread (Web Workers unavailable)')+' | elapsed: '+o.secs.toFixed(1)+' s');
  L.push('');L.push('Best-LogLik reproducibility (starts reaching the best LogLik within 0.001):');
- o.models.forEach((m,i)=>{if(m&&m.starts)L.push('  K='+(i+1)+': LogLik '+m.ll.toFixed(3)+' reached in '+m.starts.hits+' of '+m.starts.n+' starts ('+m.starts.fail+' failed)');else L.push('  K='+(i+1)+': no converged solution')});
- if(o.B){L.push('');L.push('BLRT valid bootstrap samples:');o.binfo.forEach((b,i)=>{if(b)L.push('  '+i+' vs '+(i+1)+' profiles: '+b.valid+' of '+b.B+' valid')})}
+ o.models.forEach((m,i)=>{if(m&&m.starts)L.push('   K='+(i+1)+': LogLik '+m.ll.toFixed(3)+' reached in '+m.starts.hits+' of '+m.starts.n+' starts ('+m.starts.fail+' failed)');else L.push('   K='+(i+1)+': no converged solution')});
+ if(o.B){L.push('');L.push('BLRT valid bootstrap samples:');o.binfo.forEach((b,i)=>{if(b)L.push('   '+i+' vs '+(i+1)+' profiles: '+b.valid+' of '+b.B+' valid')})}
  return L.join('\n')}
 
 $('cancelBtn').addEventListener('click',()=>{if(S.pool)S.pool.close()});
@@ -616,7 +617,7 @@ $('runDemo').addEventListener('click',()=>{const F=S.fin;if(!F){toast('Run the L
  if($('demoType').value==='continuous'){
   const g=lv.map(l=>{const y=[];grp.forEach((c,i)=>{if(c===l){const x=safeNum(F.cols[v][i]);if(isFinite(x))y.push(x)}});return y});
   if(g.some(a=>a.length<2)){$('demoOut').textContent='Variable is not numeric or a profile has fewer than 2 valid values.';return}
-  out.push('=== DESCRIPTIVES BY PROFILE ===');lv.forEach((l,i)=>out.push('Profile '+l+':  n = '+g[i].length+'  Mean = '+mean(g[i]).toFixed(3)+'  SD = '+sd(g[i]).toFixed(3)));
+  out.push('=== DESCRIPTIVES BY PROFILE ===');lv.forEach((l,i)=>out.push('Profile '+l+':   n = '+g[i].length+'   Mean = '+mean(g[i]).toFixed(3)+'   SD = '+sd(g[i]).toFixed(3)));
   if(lv.length===2){const[a,b]=g,va=sd(a)**2/a.length,vb=sd(b)**2/b.length,t=(mean(a)-mean(b))/Math.sqrt(va+vb),df=(va+vb)**2/(va**2/(a.length-1)+vb**2/(b.length-1));
    out.push('','=== WELCH t-TEST ===','t = '+t.toFixed(3)+', df = '+df.toFixed(2)+', p = '+fp(pT2(t,df)));
    const sp=Math.sqrt(((a.length-1)*sd(a)**2+(b.length-1)*sd(b)**2)/(a.length+b.length-2));out.push("Cohen's d = "+((mean(a)-mean(b))/sp).toFixed(3))}
@@ -629,7 +630,7 @@ $('runDemo').addEventListener('click',()=>{const F=S.fin;if(!F){toast('Run the L
    out.push('','=== POST-HOC: pairwise Welch t-tests, Bonferroni-adjusted ===');
    const m=k*(k-1)/2;for(let i=0;i<k;i++)for(let j=i+1;j<k;j++){const a=g[i],b=g[j],va=sd(a)**2/a.length,vb=sd(b)**2/b.length,t=(mean(a)-mean(b))/Math.sqrt(va+vb),df=(va+vb)**2/(va**2/(a.length-1)+vb**2/(b.length-1));
     const sp=Math.sqrt(((a.length-1)*sd(a)**2+(b.length-1)*sd(b)**2)/(a.length+b.length-2));
-    out.push('Profile '+lv[i]+' vs '+lv[j]+':  diff = '+(mean(a)-mean(b)).toFixed(3)+',  t = '+t.toFixed(3)+',  adj. p = '+fp(Math.min(1,pT2(t,df)*m))+",  d = "+((mean(a)-mean(b))/sp).toFixed(2))}
+    out.push('Profile '+lv[i]+' vs '+lv[j]+':   diff = '+(mean(a)-mean(b)).toFixed(3)+',   t = '+t.toFixed(3)+',   adj. p = '+fp(Math.min(1,pT2(t,df)*m))+",   d = "+((mean(a)-mean(b))/sp).toFixed(2))}
    out.push('','Note: Tukey HSD is not implemented in the browser version; Bonferroni-adjusted Welch tests are reported instead.')}
  }else{
   const cats=[...new Set(F.cols[v].map(x=>String(x)))].filter(x=>x.trim()!=='').sort();
@@ -652,7 +653,6 @@ function mnlogit(Xd,y,J){const n=Xd.length,q=Xd[0].length,m=(J-1)*q;let beta=new
    const mx=Math.max(...eta);const e=eta.map(v=>Math.exp(v-mx));const sm=e.reduce((a,b)=>a+b,0);const P=e.map(v=>v/sm);ll+=Math.log(P[y[i]]);
    for(let j=1;j<J;j++){const rj=(y[i]===j?1:0)-P[j];for(let a=0;a<q;a++){g[(j-1)*q+a]+=rj*x[a];
      for(let l=1;l<J;l++){const w=P[j]*((j===l?1:0)-P[l]);if(l>=j)for(let b=0;b<q;b++){I[(j-1)*q+a][(l-1)*q+b]+=w*x[a]*x[b]}}}}}
-  for(let r=0;r<m;r++)for(let c=0;c<r;c++){} 
   for(let r=0;r<m;r++)for(let c=0;c<m;c++){if(I[r][c]===0&&I[c][r]!==0)I[r][c]=I[c][r]}
   for(let r=0;r<m;r++)I[r][r]+=1e-8;
   const inv=solveInv(I);if(!inv)return null;
@@ -712,7 +712,7 @@ $('runLpta').addEventListener('click',async()=>{
    'Covariance structure: '+model+' | random starts per time point: '+nst+' | seed: '+seed,
    'Best-LL starts T1: '+m1.starts.hits+'/'+m1.starts.n+' (LogLik '+m1.ll.toFixed(2)+') | T2: '+m2.starts.hits+'/'+m2.starts.n+' (LogLik '+m2.ll.toFixed(2)+')',
    'Relative entropy T1: '+fx(entropyRel(c1.z,K))+' | T2: '+fx(entropyRel(c2.z,K)),'','Row transition probabilities (%):'];
-  cnt.forEach((row,i)=>out.push('T1-P'+(i+1)+'  '+row.map(c=>(rs[i]?100*c/rs[i]:0).toFixed(1).padStart(7)).join('')));
+  cnt.forEach((row,i)=>out.push('T1-P'+(i+1)+'   '+row.map(c=>(rs[i]?100*c/rs[i]:0).toFixed(1).padStart(7)).join('')));
   if(ok){const st=crosstabStats(cnt);out.push('','Chi-square test of association between T1 and T2 profiles:','X2('+st.df+') = '+st.chi.toFixed(3)+', p = '+fp(st.p),"Cramer's V = "+st.V.toFixed(3));if(st.minE<5)out.push('Warning: some expected counts < 5; interpret p with caution.')}
   out.push('','Stay rate if labels correspond (diagonal): '+(100*po).toFixed(1)+'%',"Cohen's kappa (diagonal agreement): "+((po-pe)/(1-pe)).toFixed(3),
    'Note: diagonal-based indices assume Profile i at T1 is substantively the same as Profile i at T2. Verify with the plots.');
@@ -722,4 +722,3 @@ $('runLpta').addEventListener('click',async()=>{
 </script>
 </body>
 </html>
-
