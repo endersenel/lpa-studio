@@ -290,7 +290,7 @@ function emRun(X,K,z,maxit=500){
  return{K,ll,pi:pi.slice(),mu:mu.map(m=>m.slice()),s2:s2.slice(),z,df:(K-1)+K*p+p}}
 function fitBest(X,K,r,nstart){const n=X.length;let best=null;
  for(let s=0;s<nstart;s++){
-  const lab=K===1?new Array(n).fill(0):kmeansLabels(X,K,r);
+  const lab=K===1?new Array(n).fill(0):(s%2===0?kmeansLabels(X,K,r):Array.from({length:n},()=>Math.floor(r()*K)));
   const z=lab.map(l=>{const a=new Array(K).fill(K===1?0:1e-4);a[l]=1;const t=a.reduce((x,y)=>x+y,0);return a.map(v=>v/t)});
   const m=emRun(X,K,z);if(m&&(!best||m.ll>best.ll))best=m;if(K===1&&best)break}
  return best}
@@ -308,7 +308,7 @@ async function buildFit(models,X,doBlrt,nboot,r,prog){
  const n=X.length,K=models.length;const blrt=new Array(K).fill(NaN);
  if(doBlrt){for(let k=2;k<=K;k++){
    const m0=models[k-2],m1=models[k-1];if(!m0||!m1)continue;const obs=2*(m1.ll-m0.ll);let ge=0,valid=0;
-   for(let b=0;b<nboot;b++){const Xb=simulate(m0,n,r);const f0=fitBest(Xb,k-1,r,1),f1=fitBest(Xb,k,r,3);
+   for(let b=0;b<nboot;b++){const Xb=simulate(m0,n,r);const f0=fitBest(Xb,k-1,r,5),f1=fitBest(Xb,k,r,20);
     if(f0&&f1){valid++;if(2*(f1.ll-f0.ll)>=obs)ge++}
     if(b%2===0){prog('BLRT '+(k-1)+' vs '+k+' profiles: '+(b+1)+'/'+nboot);await tick()}}
    blrt[k-1]=valid?(ge+1)/(valid+1):NaN}}
@@ -360,7 +360,7 @@ $('runLpa').addEventListener('click',async()=>{
  if(vars.some((_,j)=>sd(X0.map(r=>r[j]))===0)){toast('At least one indicator has zero variance.');return}
  const btn=$('runLpa');btn.disabled=true;const prog=m=>$('lpaProg').textContent=m;
  try{const scaled=$('scaleVars').checked;const X=scaled?zscore(X0):X0;const r=rng(parseInt($('seed').value)||123);const models=[];
-  for(let k=1;k<=K;k++){prog('Fitting '+k+'-profile model...');await tick();models.push(fitBest(X,k,r,10))}
+  for(let k=1;k<=K;k++){prog('Fitting '+k+'-profile model...');await tick();models.push(fitBest(X,k,r,k<=2?20:100))}
   const fit=await buildFit(models,X,$('runBlrt').checked,Math.max(19,parseInt($('nboot').value)||50),r,prog);
   S.lpa={models,X,X0,vars,idx,scaled,fit,nTotal:S.data.n};
   const cand=fit.filter(f=>f.Profiles>=2&&isFinite(f.BIC));
